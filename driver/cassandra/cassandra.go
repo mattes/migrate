@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"regexp"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -21,7 +22,7 @@ const tableName = "schema_migrations"
 const versionRow = 1
 
 // Cassandra Driver URL format:
-// cassandra://host:port/keyspace[/protocol=2/cql=3.0.5]
+// cassandra://host:port/keyspace[?protocol=2&cql=3.0.5]
 //
 // Example:
 // cassandra://localhost/SpaceOfKeys
@@ -48,36 +49,38 @@ func (driver *Driver) Initialize(rawurl string) error {
 	return nil
 }
 
+var validKeyspaceRegexp = regexp.MustCompile(`\w+`)
+
 func clusterConfigFromUrl(u *url.URL) (*gocql.ClusterConfig, error) {
 	// slashes are not valid in keyspace names, so we can use things after
 	// the slash to further configure the connection; we lop off the leading
 	// slash to start things off
 	pathParts := strings.Split(u.Path[1:], "/")
+	if len(pathParts) > 1 {
+		return nil, fmt.Errorf("Invalid keyspace configuration string '%s'", u.Path)
+	}
 
 	cluster := gocql.NewCluster(u.Host)
 	cluster.Keyspace = pathParts[0]
 	cluster.Consistency = gocql.All
 	cluster.Timeout = 1 * time.Minute
 
-	for _, part := range pathParts[1:] {
-		kv := strings.Split(part, "=")
-		if len(kv) != 2 {
-			return nil, fmt.Errorf("Invalid cassandra cluster config option %s", part)
-		}
-		key, value := kv[0], kv[1]
-		switch key {
-		case "protocol":
-			numProto, err := strconv.ParseInt(value, 10, 32)
-			if err != nil {
-				return nil, fmt.Errorf("Invalid protocol number: %s (%s)", value, err)
-			}
-			cluster.ProtoVersion = int(numProto)
-		case "cql":
-			cluster.CQLVersion = value
-		default:
-			return nil, fmt.Errorf("Invalid cassandra cluster config option %s", part)
-		}
+	if !validKeyspaceRegexp.MatchString(cluster.Keyspace) {
+		return nil, fmt.Errorf("Invalid keyspace name '%s'", cluster.Keyspace)
 	}
+
+	if proto := u.Query().Get("protocol"); proto != "" {
+		numProto, err := strconv.ParseInt(proto, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("Invalid protocol number: %s (%s)", proto, err)
+		}
+		cluster.ProtoVersion = int(numProto)
+
+	}
+	if cql := u.Query().Get("cql"); cql != "" {
+		cluster.CQLVersion = cql
+	}
+
 	return cluster, nil
 }
 

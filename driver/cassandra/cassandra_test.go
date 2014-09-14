@@ -12,7 +12,7 @@ import (
 )
 
 func TestClusterConfigFromUrl(t *testing.T) {
-	rawurl := "cassandra://localhos/migratetest/protocol=1/cql=3.0.1"
+	rawurl := "cassandra://localhos/migratetest?protocol=1&cql=3.0.1"
 	u, err := url.Parse(rawurl)
 	if err != nil {
 		t.Fatal(err)
@@ -53,10 +53,10 @@ func TestDefaultsPreserved(t *testing.T) {
 
 func TestInvalidConfigOptions(t *testing.T) {
 	invalids := []string{
-		"cassandra://localhost/migratetest/protocol=a",
-		"cassandra://localhost/migratetest/proto=1/cql=3.0.1",
+		"cassandra://localhost/migratetest?protocol=a",
+		"cassandra://localhost/migratetest?protocol=1?cql=3.0.1",
 		"cassandra://localhost/migratetest/foo=bar",
-		"cassandra://localhost/migratetest/proto/1",
+		"cassandra://localhost/migratetest/proto=1",
 	}
 	for _, rawurl := range invalids {
 		u, err := url.Parse(rawurl)
