@@ -21,7 +21,7 @@ const tableName = "schema_migrations"
 const versionRow = 1
 
 // Cassandra Driver URL format:
-// cassandra://host:port/keyspace[/protocol=2/cql=3.0.5]
+// cassandra://host:port/keyspace[?protocol=2&cql=3.0.5]
 //
 // Example:
 // cassandra://localhost/SpaceOfKeys
@@ -59,25 +59,18 @@ func clusterConfigFromUrl(u *url.URL) (*gocql.ClusterConfig, error) {
 	cluster.Consistency = gocql.All
 	cluster.Timeout = 1 * time.Minute
 
-	for _, part := range pathParts[1:] {
-		kv := strings.Split(part, "=")
-		if len(kv) != 2 {
-			return nil, fmt.Errorf("Invalid cassandra cluster config option %s", part)
+	if proto := u.Query().Get("protocol"); proto != "" {
+		numProto, err := strconv.ParseInt(proto, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("Invalid protocol number: %s (%s)", proto, err)
 		}
-		key, value := kv[0], kv[1]
-		switch key {
-		case "protocol":
-			numProto, err := strconv.ParseInt(value, 10, 32)
-			if err != nil {
-				return nil, fmt.Errorf("Invalid protocol number: %s (%s)", value, err)
-			}
-			cluster.ProtoVersion = int(numProto)
-		case "cql":
-			cluster.CQLVersion = value
-		default:
-			return nil, fmt.Errorf("Invalid cassandra cluster config option %s", part)
-		}
+		cluster.ProtoVersion = int(numProto)
+
 	}
+	if cql := u.Query().Get("cql"); cql != "" {
+		cluster.CQLVersion = cql
+	}
+
 	return cluster, nil
 }
 

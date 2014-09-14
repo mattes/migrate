@@ -12,7 +12,7 @@ import (
 )
 
 func TestClusterConfigFromUrl(t *testing.T) {
-	rawurl := "cassandra://localhos/migratetest/protocol=1/cql=3.0.1"
+	rawurl := "cassandra://localhos/migratetest?protocol=1&cql=3.0.1"
 	u, err := url.Parse(rawurl)
 	if err != nil {
 		t.Fatal(err)
