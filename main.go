@@ -162,7 +162,7 @@ func writePipe(pipe chan interface{}) (ok bool) {
 			select {
 			case item, ok := <-pipe:
 				if !ok {
-					return false
+					return okFlag
 				} else {
 					switch item.(type) {
 
