@@ -73,7 +73,7 @@ func New(url string) (Driver, error) {
 
 	case "cassandra":
 		d := &cassandra.Driver{}
-		verifyFilenameExtension("cassanda", d)
+		verifyFilenameExtension("cassandra", d)
 		if err := d.Initialize(url); err != nil {
 			return nil, err
 		}
