@@ -8,6 +8,7 @@ import (
 
 	"github.com/mattes/migrate/driver/bash"
 	"github.com/mattes/migrate/driver/cassandra"
+	"github.com/idioterna/migrate/driver/tlscassandra"
 	"github.com/mattes/migrate/driver/mysql"
 	"github.com/mattes/migrate/driver/postgres"
 	"github.com/mattes/migrate/file"
@@ -78,6 +79,15 @@ func New(url string) (Driver, error) {
 			return nil, err
 		}
 		return d, nil
+
+	case "tlscassandra":
+		d := &tlscassandra.Driver{}
+		verifyFilenameExtension("tlscassandra", d)
+		if err := d.Initialize(url); err != nil {
+			return nil, err
+		}
+		return d, nil
+
 	default:
 		return nil, errors.New(fmt.Sprintf("Driver '%s' not found.", u.Scheme))
 	}
