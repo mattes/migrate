@@ -1,11 +1,12 @@
 package file
 
 import (
-	"github.com/mattes/migrate/migrate/direction"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
+
+	"github.com/fedyakin/migrate/migrate/direction"
 )
 
 func TestParseFilenameSchema(t *testing.T) {

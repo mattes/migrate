@@ -1,23 +1,34 @@
-// Package postgres implements the Driver interface.
+// Package postgres implements the PerFileTxnDriver interface.
 package postgres
 
 import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/lib/pq"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
 	"strconv"
+
+	"github.com/fedyakin/migrate/file"
+	"github.com/fedyakin/migrate/migrate/direction"
+	"github.com/lib/pq"
 )
 
-type Driver struct {
+type PerFileTxnDriver struct {
 	db *sql.DB
+}
+
+type NoTxnDriver struct {
+	*PerFileTxnDriver
+}
+
+type SingleTxnDriver struct {
+	*PerFileTxnDriver
+	rollback bool
+	txn      *sql.Tx
 }
 
 const tableName = "schema_migrations"
 
-func (driver *Driver) Initialize(url string) error {
+func (driver *PerFileTxnDriver) Initialize(url string) error {
 	db, err := sql.Open("postgres", url)
 	if err != nil {
 		return err
@@ -33,25 +44,25 @@ func (driver *Driver) Initialize(url string) error {
 	return nil
 }
 
-func (driver *Driver) Close() error {
+func (driver *PerFileTxnDriver) Close() error {
 	if err := driver.db.Close(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (driver *Driver) ensureVersionTableExists() error {
+func (driver *PerFileTxnDriver) ensureVersionTableExists() error {
 	if _, err := driver.db.Exec("CREATE TABLE IF NOT EXISTS " + tableName + " (version int not null primary key);"); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (driver *Driver) FilenameExtension() string {
+func (driver *PerFileTxnDriver) FilenameExtension() string {
 	return "sql"
 }
 
-func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
+func (driver *PerFileTxnDriver) Migrate(f file.File, pipe chan interface{}) {
 	defer close(pipe)
 	pipe <- f
 
@@ -107,7 +118,7 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 	}
 }
 
-func (driver *Driver) Version() (uint64, error) {
+func (driver *PerFileTxnDriver) Version() (uint64, error) {
 	var version uint64
 	err := driver.db.QueryRow("SELECT version FROM " + tableName + " ORDER BY version DESC LIMIT 1").Scan(&version)
 	switch {
@@ -118,4 +129,66 @@ func (driver *Driver) Version() (uint64, error) {
 	default:
 		return version, nil
 	}
+}
+
+func (driver *NoTxnDriver) Migrate(f file.File, pipe chan interface{}) {
+	defer close(pipe)
+	pipe <- f
+
+	if f.Direction == direction.Up {
+		if _, err := driver.db.Exec("INSERT INTO "+tableName+" (version) VALUES ($1)", f.Version); err != nil {
+			pipe <- err
+			return
+		}
+	} else if f.Direction == direction.Down {
+		if _, err := driver.db.Exec("DELETE FROM "+tableName+" WHERE version=$1", f.Version); err != nil {
+			pipe <- err
+			return
+		}
+	}
+
+	if err := f.ReadContent(); err != nil {
+		pipe <- err
+		return
+	}
+
+	if _, err := driver.db.Exec(string(f.Content)); err != nil {
+		pqErr := err.(*pq.Error)
+		offset, err := strconv.Atoi(pqErr.Position)
+		if err == nil && offset >= 0 {
+			lineNo, columnNo := file.LineColumnFromOffset(f.Content, offset-1)
+			errorPart := file.LinesBeforeAndAfter(f.Content, lineNo, 5, 5, true)
+			pipe <- errors.New(fmt.Sprintf("%s %v: %s in line %v, column %v:\n\n%s", pqErr.Severity, pqErr.Code, pqErr.Message, lineNo, columnNo, string(errorPart)))
+		} else {
+			pipe <- errors.New(fmt.Sprintf("%s %v: %s", pqErr.Severity, pqErr.Code, pqErr.Message))
+		}
+
+		return
+	}
+}
+
+func (driver *SingleTxnDriver) Initialize(url string) error {
+	err := driver.PerFileTxnDriver.Initialize(url)
+	if err != nil {
+		return err
+	}
+
+	driver.txn, err = driver.db.Begin()
+	return err
+}
+
+func (driver *SingleTxnDriver) Close() error {
+	var err error
+	if driver.rollback {
+		err = driver.txn.Rollback()
+	} else {
+		err = driver.txn.Commit()
+	}
+
+	if err != nil {
+		driver.PerFileTxnDriver.Close()
+		return err
+	}
+
+	return driver.PerFileTxnDriver.Close()
 }

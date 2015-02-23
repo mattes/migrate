@@ -2,11 +2,12 @@ package mysql
 
 import (
 	"database/sql"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
-	pipep "github.com/mattes/migrate/pipe"
 	"strings"
 	"testing"
+
+	"github.com/fedyakin/migrate/file"
+	"github.com/fedyakin/migrate/migrate/direction"
+	pipep "github.com/fedyakin/migrate/pipe"
 )
 
 // TestMigrate runs some additional tests on Migrate().

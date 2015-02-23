@@ -3,14 +3,26 @@ package driver
 
 import (
 	"errors"
+	"flag"
 	"fmt"
-	neturl "net/url" // alias to allow `url string` func signature in New
+	neturl "net/url"
+	"strings"
 
-	"github.com/mattes/migrate/driver/bash"
-	"github.com/mattes/migrate/driver/cassandra"
-	"github.com/mattes/migrate/driver/mysql"
-	"github.com/mattes/migrate/driver/postgres"
-	"github.com/mattes/migrate/file"
+	"github.com/fedyakin/migrate/driver/bash"
+	"github.com/fedyakin/migrate/driver/cassandra"
+	"github.com/fedyakin/migrate/driver/mysql" // alias to allow `url string` func signature in New
+	"github.com/fedyakin/migrate/driver/postgres"
+	"github.com/fedyakin/migrate/file"
+)
+
+var transactionType = flag.String("txn", "", "")
+
+type TxnType int
+
+const (
+	TxnNone TxnType = iota
+	TxnPerFile
+	TxnSingle
 )
 
 // Driver is the interface type that needs to implemented by all drivers.
@@ -48,7 +60,17 @@ func New(url string) (Driver, error) {
 
 	switch u.Scheme {
 	case "postgres":
-		d := &postgres.Driver{}
+		// For postgres we support multiple transaction strategies
+		var d Driver
+		switch getTxnType() {
+		case TxnNone:
+			d = &postgres.NoTxnDriver{}
+		case TxnPerFile:
+			d = &postgres.PerFileTxnDriver{}
+		case TxnSingle:
+			d = &postgres.SingleTxnDriver{}
+		}
+
 		verifyFilenameExtension("postgres", d)
 		if err := d.Initialize(url); err != nil {
 			return nil, err
@@ -93,4 +115,21 @@ func verifyFilenameExtension(driverName string, d Driver) {
 	if f[0:1] == "." {
 		panic(fmt.Sprintf("%s.FilenameExtension() returned string must not start with a dot.", driverName))
 	}
+}
+
+// getTxnType returns the transaction behavior specified, or panics for unknown
+// or undefined behaviors
+func getTxnType() TxnType {
+	switch strings.ToLower(*transactionType) {
+	case "none":
+		return TxnNone
+
+	case "single":
+		return TxnSingle
+
+	case "perfile":
+		return TxnPerFile
+	}
+
+	panic(fmt.Sprintf("Unknown transaction type requested: %s", transactionType))
 }

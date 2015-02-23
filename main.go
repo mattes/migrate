@@ -6,14 +6,15 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate"
-	"github.com/mattes/migrate/migrate/direction"
-	pipep "github.com/mattes/migrate/pipe"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/fatih/color"
+	"github.com/fedyakin/migrate/file"
+	"github.com/fedyakin/migrate/migrate"
+	"github.com/fedyakin/migrate/migrate/direction"
+	pipep "github.com/fedyakin/migrate/pipe"
 )
 
 var url = flag.String("url", "", "")

@@ -7,12 +7,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/go-sql-driver/mysql"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/fedyakin/migrate/file"
+	"github.com/fedyakin/migrate/migrate/direction"
+	"github.com/go-sql-driver/mysql"
 )
 
 type Driver struct {
