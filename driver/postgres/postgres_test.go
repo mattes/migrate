@@ -25,7 +25,7 @@ func TestMigrate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	d := &Driver{}
+	d := &PerFileTxnDriver{}
 	if err := d.Initialize(driverUrl); err != nil {
 		t.Fatal(err)
 	}
