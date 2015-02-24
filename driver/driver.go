@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	neturl "net/url"
 	"os"
 	"strings"
@@ -72,10 +73,13 @@ func New(url string) (Driver, error) {
 		switch txnType {
 		case TxnNone:
 			d = &postgres.NoTxnDriver{}
+			log.Println("Migration scripts will be executed with no explicit transactions")
 		case TxnPerFile:
 			d = &postgres.PerFileTxnDriver{}
+			log.Println("Each migration script will be executed in its own transaction")
 		case TxnSingle:
 			d = &postgres.SingleTxnDriver{}
+			log.Println("All migration scripts will be executed in a single transaction")
 		}
 
 		verifyFilenameExtension("postgres", d)
