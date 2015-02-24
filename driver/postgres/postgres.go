@@ -72,26 +72,32 @@ func (driver *PerFileTxnDriver) Migrate(f file.File, pipe chan interface{}) {
 		return
 	}
 
-	if f.Direction == direction.Up {
-		if _, err := tx.Exec("INSERT INTO "+tableName+" (version) VALUES ($1)", f.Version); err != nil {
-			pipe <- err
-			if err := tx.Rollback(); err != nil {
+	// Don't update the version number to count always run files
+	if f.Always == false {
+		if f.Direction == direction.Up {
+			if _, err := tx.Exec("INSERT INTO "+tableName+" (version) VALUES ($1)", f.Version); err != nil {
 				pipe <- err
+				if err := tx.Rollback(); err != nil {
+					pipe <- err
+				}
+				return
 			}
-			return
-		}
-	} else if f.Direction == direction.Down {
-		if _, err := tx.Exec("DELETE FROM "+tableName+" WHERE version=$1", f.Version); err != nil {
-			pipe <- err
-			if err := tx.Rollback(); err != nil {
+		} else if f.Direction == direction.Down {
+			if _, err := tx.Exec("DELETE FROM "+tableName+" WHERE version=$1", f.Version); err != nil {
 				pipe <- err
+				if err := tx.Rollback(); err != nil {
+					pipe <- err
+				}
+				return
 			}
-			return
 		}
 	}
 
 	if err := f.ReadContent(); err != nil {
 		pipe <- err
+		if err := tx.Rollback(); err != nil {
+			pipe <- err
+		}
 		return
 	}
 
@@ -135,15 +141,18 @@ func (driver *NoTxnDriver) Migrate(f file.File, pipe chan interface{}) {
 	defer close(pipe)
 	pipe <- f
 
-	if f.Direction == direction.Up {
-		if _, err := driver.db.Exec("INSERT INTO "+tableName+" (version) VALUES ($1)", f.Version); err != nil {
-			pipe <- err
-			return
-		}
-	} else if f.Direction == direction.Down {
-		if _, err := driver.db.Exec("DELETE FROM "+tableName+" WHERE version=$1", f.Version); err != nil {
-			pipe <- err
-			return
+	// Don't update the version number to count always run files
+	if f.Always == false {
+		if f.Direction == direction.Up {
+			if _, err := driver.db.Exec("INSERT INTO "+tableName+" (version) VALUES ($1)", f.Version); err != nil {
+				pipe <- err
+				return
+			}
+		} else if f.Direction == direction.Down {
+			if _, err := driver.db.Exec("DELETE FROM "+tableName+" WHERE version=$1", f.Version); err != nil {
+				pipe <- err
+				return
+			}
 		}
 	}
 
@@ -191,4 +200,47 @@ func (driver *SingleTxnDriver) Close() error {
 	}
 
 	return driver.PerFileTxnDriver.Close()
+}
+
+func (driver *SingleTxnDriver) Migrate(f file.File, pipe chan interface{}) {
+	defer close(pipe)
+	pipe <- f
+
+	// Don't update the version number to count always run files
+	if f.Always == false {
+		if f.Direction == direction.Up {
+			if _, err := driver.txn.Exec("INSERT INTO "+tableName+" (version) VALUES ($1)", f.Version); err != nil {
+				pipe <- err
+				driver.rollback = true
+				return
+			}
+		} else if f.Direction == direction.Down {
+			if _, err := driver.txn.Exec("DELETE FROM "+tableName+" WHERE version=$1", f.Version); err != nil {
+				pipe <- err
+				driver.rollback = true
+				return
+			}
+		}
+	}
+
+	if err := f.ReadContent(); err != nil {
+		pipe <- err
+		driver.rollback = true
+		return
+	}
+
+	if _, err := driver.txn.Exec(string(f.Content)); err != nil {
+		pqErr := err.(*pq.Error)
+		offset, err := strconv.Atoi(pqErr.Position)
+		if err == nil && offset >= 0 {
+			lineNo, columnNo := file.LineColumnFromOffset(f.Content, offset-1)
+			errorPart := file.LinesBeforeAndAfter(f.Content, lineNo, 5, 5, true)
+			pipe <- errors.New(fmt.Sprintf("%s %v: %s in line %v, column %v:\n\n%s", pqErr.Severity, pqErr.Code, pqErr.Message, lineNo, columnNo, string(errorPart)))
+		} else {
+			pipe <- errors.New(fmt.Sprintf("%s %v: %s", pqErr.Severity, pqErr.Code, pqErr.Message))
+		}
+
+		driver.rollback = true
+		return
+	}
 }
