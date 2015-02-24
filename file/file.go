@@ -16,7 +16,7 @@ import (
 	"github.com/fedyakin/migrate/migrate/direction"
 )
 
-var filenameRegex = `^([0-9]+)_(.*)\.(up|down)\.%s$`
+var filenameRegex = `^([0-9]+)_(.*)\.((?:always)?up|(?:always)?down)\.%s$`
 
 // FilenameRegex builds regular expression stmt with given
 // filename extension from driver.
@@ -44,6 +44,9 @@ type File struct {
 
 	// UP or DOWN migration
 	Direction direction.Direction
+
+	// Is this file always run?
+	Always bool
 }
 
 // Files is a slice of Files
@@ -51,7 +54,11 @@ type Files []File
 
 // MigrationFile represents both the UP and the DOWN migration file.
 type MigrationFile struct {
+	// Is this migration file always run?
+	Always bool
+
 	// version of the migration file, parsed from the filenames
+	// for always run files, version really means order.
 	Version uint64
 
 	// reference to the *up* migration file
@@ -77,12 +84,13 @@ func (f *File) ReadContent() error {
 }
 
 // ToFirstFrom fetches all (down) migration files including the migration file
-// of the current version to the very first migration file.
+// of the current version to the very first migration file.  It will also
+// include all alwaysdown files.
 func (mf *MigrationFiles) ToFirstFrom(version uint64) (Files, error) {
 	sort.Sort(sort.Reverse(mf))
 	files := make(Files, 0)
 	for _, migrationFile := range *mf {
-		if migrationFile.Version <= version && migrationFile.DownFile != nil {
+		if (migrationFile.Always || migrationFile.Version <= version) && migrationFile.DownFile != nil {
 			files = append(files, *migrationFile.DownFile)
 		}
 	}
@@ -90,19 +98,21 @@ func (mf *MigrationFiles) ToFirstFrom(version uint64) (Files, error) {
 }
 
 // ToLastFrom fetches all (up) migration files to the most recent migration file.
-// The migration file of the current version is not included.
+// The migration file of the current version is not included.  It will also
+// include all alwaysup files.
 func (mf *MigrationFiles) ToLastFrom(version uint64) (Files, error) {
 	sort.Sort(mf)
 	files := make(Files, 0)
 	for _, migrationFile := range *mf {
-		if migrationFile.Version > version && migrationFile.UpFile != nil {
+		if (migrationFile.Always || migrationFile.Version > version) && migrationFile.UpFile != nil {
 			files = append(files, *migrationFile.UpFile)
 		}
 	}
 	return files, nil
 }
 
-// From travels relatively through migration files.
+// From travels relatively through migration files.  It will include the set
+// of always run files.  The always run files do not count as a version.
 //
 // 		+1 will fetch the next up migration file
 // 		+2 will fetch the next two up migration files
@@ -134,8 +144,16 @@ func (mf *MigrationFiles) From(version uint64, relativeN int) (Files, error) {
 	}
 
 	for _, migrationFile := range *mf {
-		if counter > 0 {
+		// We include all always run files in the desired direction without
+		// counting them as a version
+		if d == direction.Up && migrationFile.Always && migrationFile.UpFile != nil {
+			files = append(files, *migrationFile.UpFile)
+		} else if d == direction.Down && migrationFile.Always && migrationFile.DownFile != nil {
+			files = append(files, *migrationFile.DownFile)
 
+		} else if counter > 0 {
+			// If this file wasn't an always run, and we still need to migrate more
+			// versions, see if the file should be run
 			if d == direction.Up && migrationFile.Version > version && migrationFile.UpFile != nil {
 				files = append(files, *migrationFile.UpFile)
 				counter -= 1
@@ -143,8 +161,6 @@ func (mf *MigrationFiles) From(version uint64, relativeN int) (Files, error) {
 				files = append(files, *migrationFile.DownFile)
 				counter -= 1
 			}
-		} else {
-			break
 		}
 	}
 	return files, nil
@@ -162,12 +178,13 @@ func ReadMigrationFiles(path string, filenameRegex *regexp.Regexp) (files Migrat
 		name     string
 		filename string
 		d        direction.Direction
+		always   bool
 	}
 	tmpFiles := make([]*tmpFile, 0)
 	for _, file := range ioFiles {
-		version, name, d, err := parseFilenameSchema(file.Name(), filenameRegex)
+		version, name, d, always, err := parseFilenameSchema(file.Name(), filenameRegex)
 		if err == nil {
-			tmpFiles = append(tmpFiles, &tmpFile{version, name, file.Name(), d})
+			tmpFiles = append(tmpFiles, &tmpFile{version, name, file.Name(), d, always})
 		}
 	}
 
@@ -178,6 +195,7 @@ func ReadMigrationFiles(path string, filenameRegex *regexp.Regexp) (files Migrat
 		if _, ok := parsedVersions[file.version]; !ok {
 			migrationFile := MigrationFile{
 				Version: file.version,
+				Always:  file.always,
 			}
 
 			var lookFordirection direction.Direction
@@ -190,6 +208,7 @@ func ReadMigrationFiles(path string, filenameRegex *regexp.Regexp) (files Migrat
 					Name:      file.name,
 					Content:   nil,
 					Direction: direction.Up,
+					Always:    file.always,
 				}
 				lookFordirection = direction.Down
 			case direction.Down:
@@ -200,6 +219,7 @@ func ReadMigrationFiles(path string, filenameRegex *regexp.Regexp) (files Migrat
 					Name:      file.name,
 					Content:   nil,
 					Direction: direction.Down,
+					Always:    file.always,
 				}
 				lookFordirection = direction.Up
 			default:
@@ -217,6 +237,7 @@ func ReadMigrationFiles(path string, filenameRegex *regexp.Regexp) (files Migrat
 							Name:      file2.name,
 							Content:   nil,
 							Direction: direction.Up,
+							Always:    file.always,
 						}
 					case direction.Down:
 						migrationFile.DownFile = &File{
@@ -226,6 +247,7 @@ func ReadMigrationFiles(path string, filenameRegex *regexp.Regexp) (files Migrat
 							Name:      file2.name,
 							Content:   nil,
 							Direction: direction.Down,
+							Always:    file.always,
 						}
 					}
 					break
@@ -242,26 +264,34 @@ func ReadMigrationFiles(path string, filenameRegex *regexp.Regexp) (files Migrat
 }
 
 // parseFilenameSchema parses the filename
-func parseFilenameSchema(filename string, filenameRegex *regexp.Regexp) (version uint64, name string, d direction.Direction, err error) {
+func parseFilenameSchema(filename string, filenameRegex *regexp.Regexp) (version uint64, name string, d direction.Direction, always bool, err error) {
 	matches := filenameRegex.FindStringSubmatch(filename)
 	if len(matches) != 4 {
-		return 0, "", 0, errors.New("Unable to parse filename schema")
+		return 0, "", 0, false, errors.New("Unable to parse filename schema")
 	}
 
 	version, err = strconv.ParseUint(matches[1], 10, 0)
 	if err != nil {
-		return 0, "", 0, errors.New(fmt.Sprintf("Unable to parse version '%v' in filename schema", matches[0]))
+		return 0, "", 0, false, errors.New(fmt.Sprintf("Unable to parse version '%v' in filename schema", matches[0]))
 	}
 
 	if matches[3] == "up" {
 		d = direction.Up
+		always = false
+	} else if matches[3] == "alwaysup" {
+		d = direction.Up
+		always = true
 	} else if matches[3] == "down" {
 		d = direction.Down
+		always = false
+	} else if matches[3] == "alwaysdown" {
+		d = direction.Down
+		always = true
 	} else {
-		return 0, "", 0, errors.New(fmt.Sprintf("Unable to parse up|down '%v' in filename schema", matches[3]))
+		return 0, "", 0, false, errors.New(fmt.Sprintf("Unable to parse [always]up|[always]down '%v' in filename schema", matches[3]))
 	}
 
-	return version, matches[2], d, nil
+	return version, matches[2], d, always, nil
 }
 
 // Len is the number of elements in the collection.
