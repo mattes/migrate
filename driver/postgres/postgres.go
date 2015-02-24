@@ -17,11 +17,11 @@ type PerFileTxnDriver struct {
 }
 
 type NoTxnDriver struct {
-	*PerFileTxnDriver
+	PerFileTxnDriver
 }
 
 type SingleTxnDriver struct {
-	*PerFileTxnDriver
+	PerFileTxnDriver
 	rollback bool
 	txn      *sql.Tx
 }
