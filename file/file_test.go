@@ -16,25 +16,34 @@ func TestParseFilenameSchema(t *testing.T) {
 		expectVersion     uint64
 		expectName        string
 		expectDirection   direction.Direction
+		expectAlways      bool
 		expectErr         bool
 	}{
-		{"001_test_file.up.sql", "sql", 1, "test_file", direction.Up, false},
-		{"001_test_file.down.sql", "sql", 1, "test_file", direction.Down, false},
-		{"10034_test_file.down.sql", "sql", 10034, "test_file", direction.Down, false},
-		{"-1_test_file.down.sql", "sql", 0, "", direction.Up, true},
-		{"test_file.down.sql", "sql", 0, "", direction.Up, true},
-		{"100_test_file.down", "sql", 0, "", direction.Up, true},
-		{"100_test_file.sql", "sql", 0, "", direction.Up, true},
-		{"100_test_file", "sql", 0, "", direction.Up, true},
-		{"test_file", "sql", 0, "", direction.Up, true},
-		{"100", "sql", 0, "", direction.Up, true},
-		{".sql", "sql", 0, "", direction.Up, true},
-		{"up.sql", "sql", 0, "", direction.Up, true},
-		{"down.sql", "sql", 0, "", direction.Up, true},
+		{"001_test_file.up.sql", "sql", 1, "test_file", direction.Up, false, false},
+		{"001_test_file.down.sql", "sql", 1, "test_file", direction.Down, false, false},
+		{"10034_test_file.down.sql", "sql", 10034, "test_file", direction.Down, false, false},
+		{"-1_test_file.down.sql", "sql", 0, "", direction.Up, false, true},
+		{"test_file.down.sql", "sql", 0, "", direction.Up, false, true},
+		{"100_test_file.down", "sql", 0, "", direction.Up, false, true},
+		{"100_test_file.sql", "sql", 0, "", direction.Up, false, true},
+		{"100_test_file", "sql", 0, "", direction.Up, false, true},
+		{"test_file", "sql", 0, "", direction.Up, false, true},
+		{"100", "sql", 0, "", direction.Up, false, true},
+		{".sql", "sql", 0, "", direction.Up, false, true},
+		{"up.sql", "sql", 0, "", direction.Up, false, true},
+		{"down.sql", "sql", 0, "", direction.Up, false, true},
+		{"001_test_file.alwaysup.sql", "sql", 1, "test_file", direction.Up, true, false},
+		{"001_test_file.alwaysdown.sql", "sql", 1, "test_file", direction.Down, true, false},
+		{"10034_test_file.alwaysdown.sql", "sql", 10034, "test_file", direction.Down, true, false},
+		{"-1_test_file.alwaysdown.sql", "sql", 0, "", direction.Up, true, true},
+		{"test_file.alwaysdown.sql", "sql", 0, "", direction.Up, true, true},
+		{"100_test_file.alwaysdown", "sql", 0, "", direction.Up, true, true},
+		{"alwaysup.sql", "sql", 0, "", direction.Up, true, true},
+		{"alwaysdown.sql", "sql", 0, "", direction.Up, true, true},
 	}
 
 	for _, test := range tests {
-		version, name, migrate, err := parseFilenameSchema(test.filename, FilenameRegex(test.filenameExtension))
+		version, name, migrate, always, err := parseFilenameSchema(test.filename, FilenameRegex(test.filenameExtension))
 		if test.expectErr && err == nil {
 			t.Fatal("Expected error, but got none.", test)
 		}
@@ -50,6 +59,9 @@ func TestParseFilenameSchema(t *testing.T) {
 			}
 			if migrate != test.expectDirection {
 				t.Error("wrong migrate", test)
+			}
+			if always != test.expectAlways {
+				t.Error("wrong always", test)
 			}
 		}
 	}
@@ -71,6 +83,8 @@ func TestFiles(t *testing.T) {
 	ioutil.WriteFile(path.Join(tmpdir, "001_migrationfile.up.sql"), nil, 0755)
 	ioutil.WriteFile(path.Join(tmpdir, "001_migrationfile.down.sql"), nil, 0755)
 
+	ioutil.WriteFile(path.Join(tmpdir, "010_migrationfile.alwaysup.sql"), nil, 0755)
+
 	ioutil.WriteFile(path.Join(tmpdir, "101_create_table.up.sql"), nil, 0755)
 	ioutil.WriteFile(path.Join(tmpdir, "101_drop_tables.down.sql"), nil, 0755)
 
@@ -87,12 +101,12 @@ func TestFiles(t *testing.T) {
 		t.Fatal("No files returned.")
 	}
 
-	if len(files) != 5 {
+	if len(files) != 6 {
 		t.Fatal("Wrong number of files returned.")
 	}
 
 	// test sort order
-	if files[0].Version != 1 || files[1].Version != 2 || files[2].Version != 101 || files[3].Version != 301 || files[4].Version != 401 {
+	if files[0].Version != 1 || files[1].Version != 2 || files[2].Version != 10 || files[3].Version != 101 || files[4].Version != 301 || files[5].Version != 401 {
 		t.Error("Sort order is incorrect")
 		t.Error(files)
 	}
@@ -115,32 +129,39 @@ func TestFiles(t *testing.T) {
 	if files[2].UpFile == nil {
 		t.Fatalf("Missing up file for version %v", files[2].Version)
 	}
-	if files[2].DownFile == nil {
-		t.Fatalf("Missing down file for version %v", files[2].Version)
+	if files[2].DownFile != nil {
+		t.Fatalf("There should not be a down file for version %v", files[2].Version)
 	}
 
 	if files[3].UpFile == nil {
-		t.Fatalf("Missing up file for version %v", files[3].Version)
+		t.Fatalf("Missing up file for version %v", files[5].Version)
 	}
-	if files[3].DownFile != nil {
-		t.Fatalf("There should not be a down file for version %v", files[3].Version)
+	if files[3].DownFile == nil {
+		t.Fatalf("Missing down file for version %v", files[5].Version)
 	}
 
-	if files[4].UpFile != nil {
-		t.Fatalf("There should not be a up file for version %v", files[4].Version)
+	if files[4].UpFile == nil {
+		t.Fatalf("Missing up file for version %v", files[4].Version)
 	}
-	if files[4].DownFile == nil {
-		t.Fatalf("Missing down file for version %v", files[4].Version)
+	if files[4].DownFile != nil {
+		t.Fatalf("There should not be a down file for version %v", files[4].Version)
+	}
+
+	if files[5].UpFile != nil {
+		t.Fatalf("There should not be a up file for version %v", files[5].Version)
+	}
+	if files[5].DownFile == nil {
+		t.Fatalf("Missing down file for version %v", files[5].Version)
 	}
 
 	// test read
-	if err := files[4].DownFile.ReadContent(); err != nil {
+	if err := files[5].DownFile.ReadContent(); err != nil {
 		t.Error("Unable to read file", err)
 	}
-	if files[4].DownFile.Content == nil {
+	if files[5].DownFile.Content == nil {
 		t.Fatal("Read content is nil")
 	}
-	if string(files[4].DownFile.Content) != "test" {
+	if string(files[5].DownFile.Content) != "test" {
 		t.Fatal("Read content is wrong")
 	}
 
@@ -160,10 +181,10 @@ func TestFiles(t *testing.T) {
 		relative    int
 		expectRange []uint64
 	}{
-		{0, 2, []uint64{1, 2}},
-		{1, 4, []uint64{2, 101, 301}},
+		{0, 2, []uint64{1, 2, 10}},
+		{1, 4, []uint64{2, 10, 101, 301}},
 		{1, 0, nil},
-		{0, 1, []uint64{1}},
+		{0, 1, []uint64{1, 10}},
 		{0, 0, nil},
 		{101, -2, []uint64{101, 2}},
 		{401, -1, []uint64{401}},
@@ -202,7 +223,7 @@ func TestFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tofFiles) != 4 {
+	if len(tofFiles) != 5 {
 		t.Fatalf("Wrong number of files returned by ToLastFrom(), expected %v, got %v.", 5, len(tofFiles))
 	}
 	if tofFiles[0].Direction != direction.Up {
