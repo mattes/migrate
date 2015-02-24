@@ -17,7 +17,7 @@ import (
 	"github.com/fedyakin/migrate/file"
 )
 
-var transactionType = flag.String("txn", "", "")
+var transactionType = flag.String("txn", "PerFile", "")
 
 type TxnType int
 
@@ -142,5 +142,5 @@ func getTxnType() (TxnType, error) {
 		return TxnPerFile, nil
 	}
 
-	return TxnNone, fmt.Errorf("Unknown transaction type requested: %s", transactionType)
+	return TxnNone, fmt.Errorf("Unknown transaction type requested: '%s'", *transactionType)
 }
