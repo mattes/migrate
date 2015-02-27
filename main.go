@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/fedyakin/migrate/driver"
 	"github.com/fedyakin/migrate/file"
 	"github.com/fedyakin/migrate/migrate"
 	"github.com/fedyakin/migrate/migrate/direction"
@@ -20,6 +21,7 @@ import (
 var url = flag.String("url", "", "")
 var migrationsPath = flag.String("path", "", "")
 var version = flag.Bool("version", false, "Show migrate version")
+var transactionType = flag.String("txn", "PerFile", "")
 
 func main() {
 	flag.Parse()
@@ -34,6 +36,12 @@ func main() {
 		*migrationsPath, _ = os.Getwd()
 	}
 
+	txnType, err := driver.GetTxnType(*transactionType)
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+
 	switch command {
 	case "create":
 		verifyMigrationsPath(*migrationsPath)
@@ -43,7 +51,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		migrationFile, err := migrate.Create(*url, *migrationsPath, name)
+		migrationFile, err := migrate.Create(*url, *migrationsPath, name, txnType)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -63,7 +71,7 @@ func main() {
 		}
 		timerStart = time.Now()
 		pipe := pipep.New()
-		go migrate.Migrate(pipe, *url, *migrationsPath, relativeNInt)
+		go migrate.Migrate(pipe, *url, *migrationsPath, relativeNInt, txnType)
 		ok := writePipe(pipe)
 		printTimer()
 		if !ok {
@@ -79,7 +87,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		currentVersion, err := migrate.Version(*url, *migrationsPath)
+		currentVersion, err := migrate.Version(*url, *migrationsPath, txnType)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -89,7 +97,7 @@ func main() {
 
 		timerStart = time.Now()
 		pipe := pipep.New()
-		go migrate.Migrate(pipe, *url, *migrationsPath, relativeNInt)
+		go migrate.Migrate(pipe, *url, *migrationsPath, relativeNInt, txnType)
 		ok := writePipe(pipe)
 		printTimer()
 		if !ok {
@@ -100,7 +108,7 @@ func main() {
 		verifyMigrationsPath(*migrationsPath)
 		timerStart = time.Now()
 		pipe := pipep.New()
-		go migrate.Up(pipe, *url, *migrationsPath)
+		go migrate.Up(pipe, *url, *migrationsPath, txnType)
 		ok := writePipe(pipe)
 		printTimer()
 		if !ok {
@@ -111,7 +119,7 @@ func main() {
 		verifyMigrationsPath(*migrationsPath)
 		timerStart = time.Now()
 		pipe := pipep.New()
-		go migrate.Down(pipe, *url, *migrationsPath)
+		go migrate.Down(pipe, *url, *migrationsPath, txnType)
 		ok := writePipe(pipe)
 		printTimer()
 		if !ok {
@@ -122,7 +130,7 @@ func main() {
 		verifyMigrationsPath(*migrationsPath)
 		timerStart = time.Now()
 		pipe := pipep.New()
-		go migrate.Redo(pipe, *url, *migrationsPath)
+		go migrate.Redo(pipe, *url, *migrationsPath, txnType)
 		ok := writePipe(pipe)
 		printTimer()
 		if !ok {
@@ -133,7 +141,7 @@ func main() {
 		verifyMigrationsPath(*migrationsPath)
 		timerStart = time.Now()
 		pipe := pipep.New()
-		go migrate.Reset(pipe, *url, *migrationsPath)
+		go migrate.Reset(pipe, *url, *migrationsPath, txnType)
 		ok := writePipe(pipe)
 		printTimer()
 		if !ok {
@@ -142,7 +150,7 @@ func main() {
 
 	case "version":
 		verifyMigrationsPath(*migrationsPath)
-		version, err := migrate.Version(*url, *migrationsPath)
+		version, err := migrate.Version(*url, *migrationsPath, txnType)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

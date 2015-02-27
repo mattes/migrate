@@ -3,11 +3,9 @@ package driver
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"log"
 	neturl "net/url"
-	"os"
 	"strings"
 
 	"github.com/fedyakin/migrate/driver/bash"
@@ -16,8 +14,6 @@ import (
 	"github.com/fedyakin/migrate/driver/postgres"
 	"github.com/fedyakin/migrate/file"
 )
-
-var transactionType = flag.String("txn", "PerFile", "")
 
 type TxnType int
 
@@ -54,7 +50,7 @@ type Driver interface {
 }
 
 // New returns Driver and calls Initialize on it
-func New(url string) (Driver, error) {
+func New(url string, txnType TxnType) (Driver, error) {
 	u, err := neturl.Parse(url)
 	if err != nil {
 		return nil, err
@@ -62,12 +58,6 @@ func New(url string) (Driver, error) {
 
 	switch u.Scheme {
 	case "postgres":
-		txnType, err := getTxnType()
-		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-
 		// For postgres we support multiple transaction strategies
 		var d Driver
 		switch txnType {
@@ -130,8 +120,8 @@ func verifyFilenameExtension(driverName string, d Driver) {
 
 // getTxnType returns the transaction behavior specified, or an error for unknown
 // or undefined behaviors
-func getTxnType() (TxnType, error) {
-	switch strings.ToLower(*transactionType) {
+func GetTxnType(txnType string) (TxnType, error) {
+	switch strings.ToLower(txnType) {
 	case "none":
 		return TxnNone, nil
 
@@ -142,5 +132,5 @@ func getTxnType() (TxnType, error) {
 		return TxnPerFile, nil
 	}
 
-	return TxnNone, fmt.Errorf("Unknown transaction type requested: '%s'", *transactionType)
+	return TxnNone, fmt.Errorf("Unknown transaction type requested: '%s'", txnType)
 }
