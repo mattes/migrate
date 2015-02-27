@@ -3,6 +3,8 @@ package migrate
 import (
 	"io/ioutil"
 	"testing"
+
+	"github.com/fedyakin/migrate/driver"
 )
 
 // Add Driver URLs here to test basic Up, Down, .. functions.
@@ -18,10 +20,10 @@ func TestCreate(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if _, err := Create(driverUrl, tmpdir, "test_migration"); err != nil {
+		if _, err := Create(driverUrl, tmpdir, "test_migration", driver.TxnPerFile); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := Create(driverUrl, tmpdir, "another migration"); err != nil {
+		if _, err := Create(driverUrl, tmpdir, "another migration", driver.TxnPerFile); err != nil {
 			t.Fatal(err)
 		}
 
@@ -59,14 +61,14 @@ func TestReset(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		Create(driverUrl, tmpdir, "migration1")
-		Create(driverUrl, tmpdir, "migration2")
+		Create(driverUrl, tmpdir, "migration1", driver.TxnPerFile)
+		Create(driverUrl, tmpdir, "migration2", driver.TxnPerFile)
 
-		errs, ok := ResetSync(driverUrl, tmpdir)
+		errs, ok := ResetSync(driverUrl, tmpdir, driver.TxnPerFile)
 		if !ok {
 			t.Fatal(errs)
 		}
-		version, err := Version(driverUrl, tmpdir)
+		version, err := Version(driverUrl, tmpdir, driver.TxnPerFile)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -84,14 +86,14 @@ func TestDown(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		Create(driverUrl, tmpdir, "migration1")
-		Create(driverUrl, tmpdir, "migration2")
+		Create(driverUrl, tmpdir, "migration1", driver.TxnPerFile)
+		Create(driverUrl, tmpdir, "migration2", driver.TxnPerFile)
 
-		errs, ok := ResetSync(driverUrl, tmpdir)
+		errs, ok := ResetSync(driverUrl, tmpdir, driver.TxnPerFile)
 		if !ok {
 			t.Fatal(errs)
 		}
-		version, err := Version(driverUrl, tmpdir)
+		version, err := Version(driverUrl, tmpdir, driver.TxnPerFile)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -99,11 +101,11 @@ func TestDown(t *testing.T) {
 			t.Fatalf("Expected version 2, got %v", version)
 		}
 
-		errs, ok = DownSync(driverUrl, tmpdir)
+		errs, ok = DownSync(driverUrl, tmpdir, driver.TxnPerFile)
 		if !ok {
 			t.Fatal(errs)
 		}
-		version, err = Version(driverUrl, tmpdir)
+		version, err = Version(driverUrl, tmpdir, driver.TxnPerFile)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -121,14 +123,14 @@ func TestUp(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		Create(driverUrl, tmpdir, "migration1")
-		Create(driverUrl, tmpdir, "migration2")
+		Create(driverUrl, tmpdir, "migration1", driver.TxnPerFile)
+		Create(driverUrl, tmpdir, "migration2", driver.TxnPerFile)
 
-		errs, ok := DownSync(driverUrl, tmpdir)
+		errs, ok := DownSync(driverUrl, tmpdir, driver.TxnPerFile)
 		if !ok {
 			t.Fatal(errs)
 		}
-		version, err := Version(driverUrl, tmpdir)
+		version, err := Version(driverUrl, tmpdir, driver.TxnPerFile)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -136,11 +138,11 @@ func TestUp(t *testing.T) {
 			t.Fatalf("Expected version 0, got %v", version)
 		}
 
-		errs, ok = UpSync(driverUrl, tmpdir)
+		errs, ok = UpSync(driverUrl, tmpdir, driver.TxnPerFile)
 		if !ok {
 			t.Fatal(errs)
 		}
-		version, err = Version(driverUrl, tmpdir)
+		version, err = Version(driverUrl, tmpdir, driver.TxnPerFile)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -158,14 +160,14 @@ func TestRedo(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		Create(driverUrl, tmpdir, "migration1")
-		Create(driverUrl, tmpdir, "migration2")
+		Create(driverUrl, tmpdir, "migration1", driver.TxnPerFile)
+		Create(driverUrl, tmpdir, "migration2", driver.TxnPerFile)
 
-		errs, ok := ResetSync(driverUrl, tmpdir)
+		errs, ok := ResetSync(driverUrl, tmpdir, driver.TxnPerFile)
 		if !ok {
 			t.Fatal(errs)
 		}
-		version, err := Version(driverUrl, tmpdir)
+		version, err := Version(driverUrl, tmpdir, driver.TxnPerFile)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -173,11 +175,11 @@ func TestRedo(t *testing.T) {
 			t.Fatalf("Expected version 2, got %v", version)
 		}
 
-		errs, ok = RedoSync(driverUrl, tmpdir)
+		errs, ok = RedoSync(driverUrl, tmpdir, driver.TxnPerFile)
 		if !ok {
 			t.Fatal(errs)
 		}
-		version, err = Version(driverUrl, tmpdir)
+		version, err = Version(driverUrl, tmpdir, driver.TxnPerFile)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -195,14 +197,14 @@ func TestMigrate(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		Create(driverUrl, tmpdir, "migration1")
-		Create(driverUrl, tmpdir, "migration2")
+		Create(driverUrl, tmpdir, "migration1", driver.TxnPerFile)
+		Create(driverUrl, tmpdir, "migration2", driver.TxnPerFile)
 
-		errs, ok := ResetSync(driverUrl, tmpdir)
+		errs, ok := ResetSync(driverUrl, tmpdir, driver.TxnPerFile)
 		if !ok {
 			t.Fatal(errs)
 		}
-		version, err := Version(driverUrl, tmpdir)
+		version, err := Version(driverUrl, tmpdir, driver.TxnPerFile)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -210,11 +212,11 @@ func TestMigrate(t *testing.T) {
 			t.Fatalf("Expected version 2, got %v", version)
 		}
 
-		errs, ok = MigrateSync(driverUrl, tmpdir, -2)
+		errs, ok = MigrateSync(driverUrl, tmpdir, -2, driver.TxnPerFile)
 		if !ok {
 			t.Fatal(errs)
 		}
-		version, err = Version(driverUrl, tmpdir)
+		version, err = Version(driverUrl, tmpdir, driver.TxnPerFile)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -222,11 +224,11 @@ func TestMigrate(t *testing.T) {
 			t.Fatalf("Expected version 0, got %v", version)
 		}
 
-		errs, ok = MigrateSync(driverUrl, tmpdir, +1)
+		errs, ok = MigrateSync(driverUrl, tmpdir, +1, driver.TxnPerFile)
 		if !ok {
 			t.Fatal(errs)
 		}
-		version, err = Version(driverUrl, tmpdir)
+		version, err = Version(driverUrl, tmpdir, driver.TxnPerFile)
 		if err != nil {
 			t.Fatal(err)
 		}
