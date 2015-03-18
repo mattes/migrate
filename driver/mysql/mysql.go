@@ -100,7 +100,28 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 
 	// TODO this is not good! unfortunately there is no mysql driver that
 	// supports multiple statements per query.
-	sqlStmts := bytes.Split(f.Content, []byte(";"))
+	delimiter := []byte{';'}
+	// we look at the first line of the migration for `delimiter foo`.
+	// If found, we strip the line off, unquote the value, and use it as the delimiter
+	if bytes.HasPrefix(f.Content, []byte("delimiter ")) {
+		delimiterOffset := len("delimiter ")
+		contentSplit := bytes.SplitN(f.Content[delimiterOffset:], []byte{'\n'}, 2)
+
+		delimiter = bytes.TrimSpace(contentSplit[0])
+
+		if len(contentSplit) > 1 {
+			f.Content = contentSplit[1]
+		} else {
+			f.Content = []byte{}
+		}
+
+		delimiterUnquoted, err := strconv.Unquote(string(delimiter))
+		if err == nil {
+			delimiter = []byte(delimiterUnquoted)
+		}
+	}
+
+	sqlStmts := bytes.Split(f.Content, delimiter)
 
 	for _, sqlStmt := range sqlStmts {
 		sqlStmt = bytes.TrimSpace(sqlStmt)
