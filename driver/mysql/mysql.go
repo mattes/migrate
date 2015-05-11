@@ -177,3 +177,7 @@ func (driver *Driver) Version() (uint64, error) {
 		return version, nil
 	}
 }
+
+func (driver *Driver) Dump(filepath string) error {
+	return nil
+}

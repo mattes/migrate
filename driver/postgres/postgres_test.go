@@ -91,3 +91,28 @@ func TestMigrate(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestDump(t *testing.T) {
+	driverUrl := "postgres://localhost/migratetest?sslmode=disable"
+
+	// prepare database with at least one table
+	connection, err := sql.Open("postgres", driverUrl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := connection.Exec(`DROP TABLE IF EXISTS foos;
+			CREATE TABLE foos (foo_id INTEGER, name TEXT); 
+		`); err != nil {
+		t.Fatal(err)
+	}
+
+	d := &Driver{}
+	if err := d.Initialize(driverUrl); err != nil {
+		t.Fatal(err)
+	}
+
+	// dump the database to a test file
+	if err := d.Dump("/tmp/test"); err != nil {
+		t.Fatal(err)
+	}
+}

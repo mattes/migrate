@@ -38,6 +38,9 @@ type Driver interface {
 
 	// Version returns the current migration version.
 	Version() (uint64, error)
+
+	// Dump generates a full dump of the current database schema.
+	Dump(filepath string) error
 }
 
 // New returns Driver and calls Initialize on it

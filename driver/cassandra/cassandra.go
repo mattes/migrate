@@ -153,3 +153,7 @@ func (driver *Driver) Version() (uint64, error) {
 	err := driver.session.Query("SELECT version FROM "+tableName+" WHERE versionRow = ?", versionRow).Scan(&version)
 	return uint64(version) - 1, err
 }
+
+func (driver *Driver) Dump(filepath string) error {
+	return nil
+}
