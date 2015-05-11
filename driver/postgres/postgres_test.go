@@ -144,7 +144,7 @@ func TestDump(t *testing.T) {
 	}
 
 	// assert it has no bars
-	contents, err := ioutil.ReadFile("/tmp/test.sql")
+	contents, err = ioutil.ReadFile("/tmp/test.sql")
 	if err != nil {
 	  t.Fatal(err)
 	}
@@ -152,5 +152,37 @@ func TestDump(t *testing.T) {
 	if bytes.Contains(contents, []byte("CREATE TABLE bars")) {
 		t.Log(string(contents))
 		t.Error("Expected dump file to not contain CREATE TABLE statements for 'bars', but found one.")
+	}
+}
+
+func TestLoad(t *testing.T) {
+	driverUrl := "postgres://localhost/migratetest?sslmode=disable"
+
+	// create a file for the driver to load
+	if err := ioutil.WriteFile("/tmp/test-load.sql", []byte(`
+			DROP TABLE IF EXISTS zeds;
+			CREATE TABLE zeds (zed_id INTEGER);
+		`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	d := &Driver{}
+	if err := d.Initialize(driverUrl); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := d.Load("/tmp/test-load.sql"); err != nil {
+		t.Fatal(err)
+	}
+
+	// make sure it worked
+	connection, err := sql.Open("postgres", driverUrl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := connection.Exec(`SELECT * FROM zeds;`); err != nil {
+		t.Error("The schema was not loaded properly (can't query table 'zeds')")
+		t.Fatal(err)
 	}
 }

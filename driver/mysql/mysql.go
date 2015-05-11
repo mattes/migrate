@@ -181,3 +181,7 @@ func (driver *Driver) Version() (uint64, error) {
 func (driver *Driver) Dump(filepath string, options *map[string]interface{}) error {
 	return nil
 }
+
+func (driver *Driver) Load(filepath string) error {
+	return nil
+}

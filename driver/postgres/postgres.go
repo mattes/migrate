@@ -9,6 +9,7 @@ import (
 	"github.com/mattes/migrate/file"
 	"github.com/mattes/migrate/migrate/direction"
 	"strconv"
+	"io/ioutil"
   "os/exec"
 )
 
@@ -130,13 +131,10 @@ func (driver *Driver) Dump(filepath string, options *map[string]interface{}) err
 		if tables, ok := (*options)["exclude_tables"]; ok == true {
 			listOfTables := tables.([]string)
 			for _, v := range(listOfTables) {
-				fmt.Println("adding " + v)
 				arguments = append(arguments, "-T", v)
 			}
 		}
 	}
-
-	fmt.Println(arguments)
 
 	out, err := exec.Command("pg_dump", arguments...).CombinedOutput()
 	fmt.Println(string(out))
@@ -144,6 +142,32 @@ func (driver *Driver) Dump(filepath string, options *map[string]interface{}) err
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (driver *Driver) Load(filepath string) error {
+	tx, err := driver.db.Begin()
+	if err != nil {
+		return err
+  }
+
+	// TODO: move file reading up a level. no need to do this in each driver
+  contents, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(contents))
+
+	if _, err := tx.Exec(string(contents)); err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+  }
 
 	return nil
 }
