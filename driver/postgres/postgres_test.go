@@ -6,6 +6,8 @@ import (
 	"github.com/mattes/migrate/migrate/direction"
 	pipep "github.com/mattes/migrate/pipe"
 	"testing"
+	"io/ioutil"
+	"bytes"
 )
 
 // TestMigrate runs some additional tests on Migrate().
@@ -95,13 +97,16 @@ func TestMigrate(t *testing.T) {
 func TestDump(t *testing.T) {
 	driverUrl := "postgres://localhost/migratetest?sslmode=disable"
 
-	// prepare database with at least one table
+	// prepare database with a couple tables
 	connection, err := sql.Open("postgres", driverUrl)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := connection.Exec(`DROP TABLE IF EXISTS foos;
+	if _, err := connection.Exec(`
+			DROP TABLE IF EXISTS foos;
 			CREATE TABLE foos (foo_id INTEGER, name TEXT); 
+			DROP TABLE IF EXISTS bars;
+			CREATE TABLE bars (bar_id INTEGER, created_on DATE); 
 		`); err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +117,40 @@ func TestDump(t *testing.T) {
 	}
 
 	// dump the database to a test file
-	if err := d.Dump("/tmp/test"); err != nil {
+	if err := d.Dump("/tmp/test.sql", nil); err != nil {
 		t.Fatal(err)
+	}
+
+	// assert it looks how we expect it to look
+	contents, err := ioutil.ReadFile("/tmp/test.sql")
+	if err != nil {
+	  t.Fatal(err)
+	}
+
+	if !bytes.Contains(contents, []byte("CREATE TABLE foos")) ||
+		!bytes.Contains(contents, []byte("CREATE TABLE bars")) {
+		t.Log(contents)
+		t.Error("Expected dump file to contain CREATE TABLE statements for 'foos' and 'bars'; didn't find them.")
+	}
+
+	// now dump it without the bars table
+  options := make(map[string]interface{})
+	tables  := make([]string, 1)
+	tables[0] = "bars"
+	options["exclude_tables"] = tables
+
+	if err := d.Dump("/tmp/test.sql", &options); err != nil {
+		t.Fatal(err)
+	}
+
+	// assert it has no bars
+	contents, err := ioutil.ReadFile("/tmp/test.sql")
+	if err != nil {
+	  t.Fatal(err)
+	}
+
+	if bytes.Contains(contents, []byte("CREATE TABLE bars")) {
+		t.Log(string(contents))
+		t.Error("Expected dump file to not contain CREATE TABLE statements for 'bars', but found one.")
 	}
 }

@@ -124,6 +124,6 @@ func (driver *Driver) Version() (uint64, error) {
 	}
 }
 
-func (driver *Driver) Dump(filepath string) error {
+func (driver *Driver) Dump(filepath string, options *map[string]interface{}) error {
 	return nil
 }

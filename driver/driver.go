@@ -40,7 +40,12 @@ type Driver interface {
 	Version() (uint64, error)
 
 	// Dump generates a full dump of the current database schema.
-	Dump(filepath string) error
+	// The options map contains options which may not be supported
+	// across drivers; it is recommended that all drivers implement
+	// the below options:
+	//
+	// "exclude_tables" []string - tables to exclude from the dump.
+	Dump(filepath string, options *map[string]interface{}) error
 }
 
 // New returns Driver and calls Initialize on it

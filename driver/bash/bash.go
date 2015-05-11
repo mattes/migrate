@@ -31,6 +31,6 @@ func (driver *Driver) Version() (uint64, error) {
 	return uint64(0), nil
 }
 
-func (driver *Driver) Dump(filepath string) error {
+func (driver *Driver) Dump(filepath string, options *map[string]interface{}) error {
 	return nil
 }

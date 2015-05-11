@@ -9,10 +9,12 @@ import (
 	"github.com/mattes/migrate/file"
 	"github.com/mattes/migrate/migrate/direction"
 	"strconv"
+  "os/exec"
 )
 
 type Driver struct {
-	db *sql.DB
+	db	*sql.DB
+	url	string
 }
 
 const tableName = "schema_migrations"
@@ -25,7 +27,8 @@ func (driver *Driver) Initialize(url string) error {
 	if err := db.Ping(); err != nil {
 		return err
 	}
-	driver.db = db
+	driver.db	 = db
+	driver.url = url
 
 	if err := driver.ensureVersionTableExists(); err != nil {
 		return err
@@ -120,6 +123,27 @@ func (driver *Driver) Version() (uint64, error) {
 	}
 }
 
-func (driver *Driver) Dump(filepath string) error {
+func (driver *Driver) Dump(filepath string, options *map[string]interface{}) error {
+	arguments := []string{driver.url, "-f", filepath}
+
+	if options != nil {
+		if tables, ok := (*options)["exclude_tables"]; ok == true {
+			listOfTables := tables.([]string)
+			for _, v := range(listOfTables) {
+				fmt.Println("adding " + v)
+				arguments = append(arguments, "-T", v)
+			}
+		}
+	}
+
+	fmt.Println(arguments)
+
+	out, err := exec.Command("pg_dump", arguments...).CombinedOutput()
+	fmt.Println(string(out))
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
