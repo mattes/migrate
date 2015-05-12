@@ -261,6 +261,34 @@ func Create(url, migrationsPath, name string) (*file.MigrationFile, error) {
 	return mfile, nil
 }
 
+func Dump(url string, filename string) error {
+	d, err := driver.New(url)
+	if err != nil {
+		return err
+	}
+
+	err = d.Dump(filename, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Load(url string, filename string) error {
+	d, err := driver.New(url)
+	if err != nil {
+		return err
+	}
+
+	err = d.Load(filename)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // initDriverAndReadMigrationFilesAndGetVersion is a small helper
 // function that is common to most of the migration funcs
 func initDriverAndReadMigrationFilesAndGetVersion(url, migrationsPath string) (driver.Driver, *file.MigrationFiles, uint64, error) {
