@@ -9,7 +9,6 @@ import (
 	"github.com/mattes/migrate/file"
 	"github.com/mattes/migrate/migrate/direction"
 	"strconv"
-	"io/ioutil"
   "os/exec"
 )
 
@@ -147,24 +146,9 @@ func (driver *Driver) Dump(filepath string, options *map[string]interface{}) err
 }
 
 func (driver *Driver) Load(filepath string) error {
-	tx, err := driver.db.Begin()
-	if err != nil {
-		return err
-  }
+	out, err := exec.Command("psql", driver.url, "-f", filepath).CombinedOutput()
+	fmt.Println(string(out))
 
-	// TODO: move file reading up a level. no need to do this in each driver
-  contents, err := ioutil.ReadFile(filepath)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(string(contents))
-
-	if _, err := tx.Exec(string(contents)); err != nil {
-		return err
-	}
-
-	err = tx.Commit()
 	if err != nil {
 		return err
   }
