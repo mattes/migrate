@@ -247,6 +247,7 @@ Commands:
    migrate <n>    Apply migrations -n|+n
    goto <v>       Migrate to version v
    dump           Dump the entire database to a given file
+   load           Load the database from a given file
    help           Show this help
 
 '-path' defaults to current working directory.
