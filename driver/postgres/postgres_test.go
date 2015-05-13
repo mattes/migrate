@@ -134,7 +134,7 @@ func TestDump(t *testing.T) {
 	}
 
 	// now dump it without the bars table
-  options := make(map[string]interface{})
+	options := make(map[string]interface{})
 	tables  := make([]string, 1)
 	tables[0] = "bars"
 	options["exclude_tables"] = tables
