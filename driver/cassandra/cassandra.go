@@ -71,9 +71,6 @@ func (driver *Driver) Initialize(rawurl string) error {
 		return err
 	}
 
-	if err := driver.ensureVersionTableExists(); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -116,6 +113,12 @@ func (driver *Driver) version(d direction.Direction, invert bool) error {
 
 func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 	var err error
+
+	if err = driver.ensureVersionTableExists(); err != nil {
+		pipe <- err
+		return
+	}
+
 	defer func() {
 		if err != nil {
 			// Invert version direction if we couldn't apply the changes for some reason.
