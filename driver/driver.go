@@ -10,7 +10,6 @@ import (
 	"github.com/mattes/migrate/driver/cassandra"
 	"github.com/mattes/migrate/driver/mysql"
 	"github.com/mattes/migrate/driver/postgres"
-	"github.com/mattes/migrate/driver/sqlite3"
 	"github.com/mattes/migrate/file"
 )
 
@@ -75,13 +74,6 @@ func New(url string) (Driver, error) {
 	case "cassandra":
 		d := &cassandra.Driver{}
 		verifyFilenameExtension("cassanda", d)
-		if err := d.Initialize(url); err != nil {
-			return nil, err
-		}
-		return d, nil
-	case "sqlite3":
-		d := &sqlite3.Driver{}
-		verifyFilenameExtension("sqlite3", d)
 		if err := d.Initialize(url); err != nil {
 			return nil, err
 		}
