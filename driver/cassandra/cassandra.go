@@ -1,47 +1,22 @@
-// Package cassandra implements the Driver interface.
 package cassandra
 
 import (
 	"fmt"
-	"github.com/gocql/gocql"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/gocql/gocql"
+	"github.com/mattes/migrate/file"
+	"github.com/mattes/migrate/migrate/direction"
 )
 
 type Driver struct {
 	session *gocql.Session
 }
 
-const (
-	tableName  = "schema_migrations"
-	versionRow = 1
-)
+const tableName = "schema_migrations"
 
-type counterStmt bool
-
-func (c counterStmt) String() string {
-	sign := ""
-	if bool(c) {
-		sign = "+"
-	} else {
-		sign = "-"
-	}
-	return "UPDATE " + tableName + " SET version = version " + sign + " 1 where versionRow = ?"
-}
-
-const (
-	up   counterStmt = true
-	down counterStmt = false
-)
-
-// Cassandra Driver URL format:
-// cassandra://host:port/keyspace
-//
-// Example:
-// cassandra://localhost/SpaceOfKeys
 func (driver *Driver) Initialize(rawurl string) error {
 	u, err := url.Parse(rawurl)
 
@@ -83,16 +58,9 @@ func (driver *Driver) Close() error {
 }
 
 func (driver *Driver) ensureVersionTableExists() error {
-	err := driver.session.Query("CREATE TABLE IF NOT EXISTS " + tableName + " (version counter, versionRow bigint primary key);").Exec()
-	if err != nil {
+	if err := driver.session.Query("CREATE TABLE IF NOT EXISTS " + tableName + " (version int primary key);").Exec(); err != nil {
 		return err
 	}
-
-	_, err = driver.Version()
-	if err != nil {
-		driver.session.Query(up.String(), versionRow).Exec()
-	}
-
 	return nil
 }
 
@@ -100,39 +68,12 @@ func (driver *Driver) FilenameExtension() string {
 	return "cql"
 }
 
-func (driver *Driver) version(d direction.Direction, invert bool) error {
-	var stmt counterStmt
-	switch d {
-	case direction.Up:
-		stmt = up
-	case direction.Down:
-		stmt = down
-	}
-	if invert {
-		stmt = !stmt
-	}
-	return driver.session.Query(stmt.String(), versionRow).Exec()
-}
-
 func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
-	var err error
-	defer func() {
-		if err != nil {
-			// Invert version direction if we couldn't apply the changes for some reason.
-			if err := driver.version(f.Direction, true); err != nil {
-				pipe <- err
-			}
-			pipe <- err
-		}
-		close(pipe)
-	}()
-
+	defer close(pipe)
 	pipe <- f
-	if err = driver.version(f.Direction, false); err != nil {
-		return
-	}
 
-	if err = f.ReadContent(); err != nil {
+	if err := f.ReadContent(); err != nil {
+		pipe <- err
 		return
 	}
 
@@ -141,15 +82,27 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 		if len(query) == 0 {
 			continue
 		}
+		if err := driver.session.Query(query).Exec(); err != nil {
+			pipe <- err
+			return
+		}
+	}
 
-		if err = driver.session.Query(query).Exec(); err != nil {
+	if f.Direction == direction.Up {
+		if err := driver.session.Query("INSERT INTO "+tableName+" (version) VALUES (?)", f.Version).Exec(); err != nil {
+			pipe <- err
+			return
+		}
+	} else if f.Direction == direction.Down {
+		if err := driver.session.Query("DELETE FROM "+tableName+" WHERE version=?", f.Version).Exec(); err != nil {
+			pipe <- err
 			return
 		}
 	}
 }
 
 func (driver *Driver) Version() (uint64, error) {
-	var version int64
-	err := driver.session.Query("SELECT version FROM "+tableName+" WHERE versionRow = ?", versionRow).Scan(&version)
-	return uint64(version) - 1, err
+	var version uint64
+	err := driver.session.Query("SELECT version FROM " + tableName + " ORDER BY version DESC LIMIT 1").Scan(&version)
+	return version, err
 }
