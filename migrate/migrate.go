@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mattes/migrate/driver"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
-	pipep "github.com/mattes/migrate/pipe"
+	"github.com/heetch/migrate/driver"
+	"github.com/heetch/migrate/file"
+	"github.com/heetch/migrate/migrate/direction"
+	pipep "github.com/heetch/migrate/pipe"
 )
 
 // Up applies all available migrations
@@ -225,7 +225,7 @@ func Create(url, migrationsPath, name string) (*file.MigrationFile, error) {
 	version += 1
 	versionStr := strconv.FormatUint(version, 10)
 
-	length := 4 // TODO(mattes) check existing files and try to guess length
+	length := 4 // TODO(heetch) check existing files and try to guess length
 	if len(versionStr)%length != 0 {
 		versionStr = strings.Repeat("0", length-len(versionStr)%length) + versionStr
 	}

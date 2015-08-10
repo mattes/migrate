@@ -14,10 +14,10 @@ migrate -url postgres://user@host:port/database -path ./db/migrations create add
 migrate -url postgres://user@host:port/database -path ./db/migrations up
 migrate help # for more info
 
-# TODO(mattes): thinking about adding some custom flag to allow migration within schemas:
--url="postgres://user@host:port/database?schema=name" 
+# TODO(heetch): thinking about adding some custom flag to allow migration within schemas:
+-url="postgres://user@host:port/database?schema=name"
 ```
 
 ## Authors
 
-* Matthias Kadenbach, https://github.com/mattes
+* Matthias Kadenbach, https://github.com/heetch

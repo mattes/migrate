@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/gocql/gocql"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
+	"github.com/heetch/migrate/file"
+	"github.com/heetch/migrate/migrate/direction"
 )
 
 type Driver struct {
