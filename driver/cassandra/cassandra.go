@@ -58,7 +58,12 @@ func (driver *Driver) Close() error {
 }
 
 func (driver *Driver) ensureVersionTableExists() error {
-	if err := driver.session.Query("CREATE TABLE IF NOT EXISTS " + tableName + " (version int primary key);").Exec(); err != nil {
+
+	if err := driver.session.Query("CREATE TABLE IF NOT EXISTS " + tableName +
+		" (driver_version int," +
+		"version bigint," +
+		"PRIMARY KEY (driver_version,  version)" +
+		") WITH CLUSTERING ORDER BY (version DESC);").Exec(); err != nil {
 		return err
 	}
 	return nil
@@ -89,12 +94,12 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 	}
 
 	if f.Direction == direction.Up {
-		if err := driver.session.Query("INSERT INTO "+tableName+" (version) VALUES (?)", f.Version).Exec(); err != nil {
+		if err := driver.session.Query("INSERT INTO "+tableName+" (driver_version, version) VALUES (1, ?)", f.Version).Exec(); err != nil {
 			pipe <- err
 			return
 		}
 	} else if f.Direction == direction.Down {
-		if err := driver.session.Query("DELETE FROM "+tableName+" WHERE version=?", f.Version).Exec(); err != nil {
+		if err := driver.session.Query("DELETE FROM "+tableName+" WHERE driver_version=1 AND version=?", f.Version).Exec(); err != nil {
 			pipe <- err
 			return
 		}
@@ -103,6 +108,9 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 
 func (driver *Driver) Version() (uint64, error) {
 	var version uint64
-	err := driver.session.Query("SELECT version FROM " + tableName + " ORDER BY version DESC LIMIT 1").Scan(&version)
+	err := driver.session.Query("SELECT version FROM " + tableName + " WHERE driver_version=1 ORDER BY version DESC LIMIT 1").Scan(&version)
+	if err != nil && err.Error() == "not found" {
+		return 0, nil
+	}
 	return version, err
 }
