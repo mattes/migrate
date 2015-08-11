@@ -62,6 +62,8 @@ func (driver *Driver) ensureVersionTableExists() error {
 	if err := driver.session.Query("CREATE TABLE IF NOT EXISTS " + tableName +
 		" (driver_version int," +
 		"version bigint," +
+		"file_name text," +
+		"applied_at timestamp," +
 		"PRIMARY KEY (driver_version,  version)" +
 		") WITH CLUSTERING ORDER BY (version DESC);").Exec(); err != nil {
 		return err
@@ -94,7 +96,7 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 	}
 
 	if f.Direction == direction.Up {
-		if err := driver.session.Query("INSERT INTO "+tableName+" (driver_version, version) VALUES (1, ?)", f.Version).Exec(); err != nil {
+		if err := driver.session.Query("INSERT INTO "+tableName+" (driver_version, version, file_name, applied_at) VALUES (1, ?, ?, dateof(now()))", f.Version, f.FileName).Exec(); err != nil {
 			pipe <- err
 			return
 		}
