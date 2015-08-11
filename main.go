@@ -1,19 +1,20 @@
 // Package main is the CLI.
 // You can use the CLI via Terminal.
-// import "github.com/mattes/migrate/migrate" for usage within Go.
+// import "github.com/heetch/migrate/migrate" for usage within Go.
 package main
 
 import (
 	"flag"
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate"
-	"github.com/mattes/migrate/migrate/direction"
-	pipep "github.com/mattes/migrate/pipe"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/fatih/color"
+	"github.com/heetch/migrate/file"
+	"github.com/heetch/migrate/migrate"
+	"github.com/heetch/migrate/migrate/direction"
+	pipep "github.com/heetch/migrate/pipe"
 )
 
 var url = flag.String("url", os.Getenv("MIGRATE_URL"), "")

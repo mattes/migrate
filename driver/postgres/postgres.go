@@ -5,10 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/lib/pq"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
 	"strconv"
+
+	"github.com/heetch/migrate/file"
+	"github.com/heetch/migrate/migrate/direction"
+	"github.com/lib/pq"
 )
 
 type Driver struct {
