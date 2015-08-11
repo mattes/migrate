@@ -21,4 +21,4 @@ See full [DSN (Data Source Name) documentation](https://github.com/go-sql-driver
 
 ## Authors
 
-* Matthias Kadenbach, https://github.com/heetch
+* Matthias Kadenbach, https://github.com/mattes

@@ -1,8 +1,5 @@
 # migrate
 
-[![Build Status](https://travis-ci.org/heetch/migrate.svg?branch=master)](https://travis-ci.org/heetch/migrate)
-[![GoDoc](https://godoc.org/github.com/heetch/migrate?status.svg)](https://godoc.org/github.com/heetch/migrate)
-
 A migration helper written in Go. Use it in your existing Golang code
 or run commands via the CLI.
 
