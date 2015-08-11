@@ -5,10 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/lib/pq"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
 	"strconv"
+
+	"github.com/heetch/migrate/file"
+	"github.com/heetch/migrate/migrate/direction"
+	"github.com/lib/pq"
 )
 
 type Driver struct {
@@ -41,7 +42,7 @@ func (driver *Driver) Close() error {
 }
 
 func (driver *Driver) ensureVersionTableExists() error {
-	if _, err := driver.db.Exec("CREATE TABLE IF NOT EXISTS " + tableName + " (version int not null primary key);"); err != nil {
+	if _, err := driver.db.Exec("CREATE TABLE IF NOT EXISTS " + tableName + " (version bigint not null primary key);"); err != nil {
 		return err
 	}
 	return nil

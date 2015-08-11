@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/gocql/gocql"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
-	pipep "github.com/mattes/migrate/pipe"
+	"github.com/heetch/migrate/file"
+	"github.com/heetch/migrate/migrate/direction"
+	pipep "github.com/heetch/migrate/pipe"
 )
 
 func TestMigrate(t *testing.T) {
@@ -47,8 +47,8 @@ func TestMigrate(t *testing.T) {
 	files := []file.File{
 		{
 			Path:      "/foobar",
-			FileName:  "001_foobar.up.sql",
-			Version:   1,
+			FileName:  "20150801233454_foobar.up.sql",
+			Version:   20150801233454,
 			Name:      "foobar",
 			Direction: direction.Up,
 			Content: []byte(`
@@ -62,8 +62,8 @@ func TestMigrate(t *testing.T) {
 		},
 		{
 			Path:      "/foobar",
-			FileName:  "002_foobar.down.sql",
-			Version:   1,
+			FileName:  "20150801233454_foobar.down.sql",
+			Version:   20150801233454,
 			Name:      "foobar",
 			Direction: direction.Down,
 			Content: []byte(`
@@ -72,8 +72,8 @@ func TestMigrate(t *testing.T) {
 		},
 		{
 			Path:      "/foobar",
-			FileName:  "002_foobar.up.sql",
-			Version:   2,
+			FileName:  "20150803233454_foobar.up.sql",
+			Version:   20150803233454,
 			Name:      "foobar",
 			Direction: direction.Up,
 			Content: []byte(`
@@ -91,6 +91,14 @@ func TestMigrate(t *testing.T) {
 		t.Fatal(errs)
 	}
 
+	version, err := d.Version()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version != 20150801233454 {
+		t.Fatal("Unable to migrate up. Expected 20150801233454 but get ", version)
+	}
+
 	pipe = pipep.New()
 	go d.Migrate(files[1], pipe)
 	errs = pipep.ReadErrors(pipe)
@@ -98,11 +106,27 @@ func TestMigrate(t *testing.T) {
 		t.Fatal(errs)
 	}
 
+	version, err = d.Version()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version != 0 {
+		t.Fatal("Unable to migrate down. Expected 0 but get ", version)
+	}
+
 	pipe = pipep.New()
 	go d.Migrate(files[2], pipe)
 	errs = pipep.ReadErrors(pipe)
 	if len(errs) == 0 {
 		t.Error("Expected test case to fail")
+	}
+
+	version, err = d.Version()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version != 0 {
+		t.Fatal("This migration should have failed, so we should get the last migration version 0 in here.", version)
 	}
 
 	if err := d.Close(); err != nil {
