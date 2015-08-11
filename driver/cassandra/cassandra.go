@@ -15,7 +15,10 @@ type Driver struct {
 	session *gocql.Session
 }
 
-const tableName = "schema_migrations"
+const (
+	tableName  = "schema_migrations"
+	driverName = "cassandra"
+)
 
 func (driver *Driver) Initialize(rawurl string) error {
 	u, err := url.Parse(rawurl)
@@ -60,11 +63,11 @@ func (driver *Driver) Close() error {
 func (driver *Driver) ensureVersionTableExists() error {
 
 	if err := driver.session.Query("CREATE TABLE IF NOT EXISTS " + tableName +
-		" (driver_version int," +
+		" (driver_name text," +
 		"version bigint," +
 		"file_name text," +
 		"applied_at timestamp," +
-		"PRIMARY KEY (driver_version,  version)" +
+		"PRIMARY KEY (driver_name,  version)" +
 		") WITH CLUSTERING ORDER BY (version DESC);").Exec(); err != nil {
 		return err
 	}
@@ -96,12 +99,13 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 	}
 
 	if f.Direction == direction.Up {
-		if err := driver.session.Query("INSERT INTO "+tableName+" (driver_version, version, file_name, applied_at) VALUES (1, ?, ?, dateof(now()))", f.Version, f.FileName).Exec(); err != nil {
+		if err := driver.session.Query("INSERT INTO "+tableName+" (driver_name, version, file_name, applied_at)"+
+			" VALUES (?, ?, ?, dateof(now()))", driverName, f.Version, f.FileName).Exec(); err != nil {
 			pipe <- err
 			return
 		}
 	} else if f.Direction == direction.Down {
-		if err := driver.session.Query("DELETE FROM "+tableName+" WHERE driver_version=1 AND version=?", f.Version).Exec(); err != nil {
+		if err := driver.session.Query("DELETE FROM "+tableName+" WHERE driver_name=? AND version=?", driverName, f.Version).Exec(); err != nil {
 			pipe <- err
 			return
 		}
@@ -110,7 +114,7 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 
 func (driver *Driver) Version() (uint64, error) {
 	var version uint64
-	err := driver.session.Query("SELECT version FROM " + tableName + " WHERE driver_version=1 ORDER BY version DESC LIMIT 1").Scan(&version)
+	err := driver.session.Query("SELECT version FROM "+tableName+" WHERE driver_name=? ORDER BY version DESC LIMIT 1", driverName).Scan(&version)
 	if err != nil && err.Error() == "not found" {
 		return 0, nil
 	}
