@@ -10,12 +10,15 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/heetch/migrate/driver"
 	"github.com/heetch/migrate/file"
 	"github.com/heetch/migrate/migrate/direction"
 	pipep "github.com/heetch/migrate/pipe"
 )
+
+var nowFunc = time.Now
 
 // Up applies all available migrations
 func Up(pipe chan interface{}, url, migrationsPath string) {
@@ -212,22 +215,12 @@ func Create(url, migrationsPath, name string) (*file.MigrationFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	files, err := file.ReadMigrationFiles(migrationsPath, file.FilenameRegex(d.FilenameExtension()))
+	now := nowFunc()
+
+	versionStr := now.Format("20060102150405")
+	version, err := strconv.ParseUint(versionStr, 10, 64)
 	if err != nil {
 		return nil, err
-	}
-
-	version := uint64(0)
-	if len(files) > 0 {
-		lastFile := files[len(files)-1]
-		version = lastFile.Version
-	}
-	version += 1
-	versionStr := strconv.FormatUint(version, 10)
-
-	length := 4 // TODO(heetch) check existing files and try to guess length
-	if len(versionStr)%length != 0 {
-		versionStr = strings.Repeat("0", length-len(versionStr)%length) + versionStr
 	}
 
 	filenamef := "%s_%s.%s.%s"
