@@ -36,9 +36,6 @@ func (driver *Driver) Initialize(url string) error {
 	}
 	driver.db = db
 
-	if err := driver.ensureVersionTableExists(); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -66,6 +63,11 @@ func (driver *Driver) FilenameExtension() string {
 func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 	defer close(pipe)
 	pipe <- f
+
+	if err := driver.ensureVersionTableExists(); err != nil {
+		pipe <- err
+		return
+	}
 
 	// http://go-database-sql.org/modifying.html, Working with Transactions
 	// You should not mingle the use of transaction-related functions such as Begin() and Commit() with SQL statements such as BEGIN and COMMIT in your SQL code.
@@ -176,4 +178,12 @@ func (driver *Driver) Version() (uint64, error) {
 	default:
 		return version, nil
 	}
+}
+
+func (driver *Driver) Dump(filepath string, options *map[string]interface{}) error {
+	return nil
+}
+
+func (driver *Driver) Load(filepath string) error {
+	return nil
 }

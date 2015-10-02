@@ -39,7 +39,7 @@ func main() {
 
 	switch command {
 	case "create":
-		verifyMigrationsPath(*migrationsPath)
+		verifyPath(*migrationsPath)
 		name := flag.Arg(1)
 		if name == "" {
 			fmt.Println("Please specify name.")
@@ -57,7 +57,7 @@ func main() {
 		fmt.Println(migrationFile.DownFile.FileName)
 
 	case "migrate":
-		verifyMigrationsPath(*migrationsPath)
+		verifyPath(*migrationsPath)
 		relativeN := flag.Arg(1)
 		relativeNInt, err := strconv.Atoi(relativeN)
 		if err != nil {
@@ -74,7 +74,7 @@ func main() {
 		}
 
 	case "goto":
-		verifyMigrationsPath(*migrationsPath)
+		verifyPath(*migrationsPath)
 		toVersion := flag.Arg(1)
 		toVersionInt, err := strconv.Atoi(toVersion)
 		if err != nil || toVersionInt < 0 {
@@ -100,7 +100,7 @@ func main() {
 		}
 
 	case "up":
-		verifyMigrationsPath(*migrationsPath)
+		verifyPath(*migrationsPath)
 		timerStart = time.Now()
 		pipe := pipep.New()
 		go migrate.Up(pipe, *url, *migrationsPath)
@@ -111,7 +111,7 @@ func main() {
 		}
 
 	case "down":
-		verifyMigrationsPath(*migrationsPath)
+		verifyPath(*migrationsPath)
 		timerStart = time.Now()
 		pipe := pipep.New()
 		go migrate.Down(pipe, *url, *migrationsPath)
@@ -122,7 +122,7 @@ func main() {
 		}
 
 	case "redo":
-		verifyMigrationsPath(*migrationsPath)
+		verifyPath(*migrationsPath)
 		timerStart = time.Now()
 		pipe := pipep.New()
 		go migrate.Redo(pipe, *url, *migrationsPath)
@@ -133,7 +133,7 @@ func main() {
 		}
 
 	case "reset":
-		verifyMigrationsPath(*migrationsPath)
+		verifyPath(*migrationsPath)
 		timerStart = time.Now()
 		pipe := pipep.New()
 		go migrate.Reset(pipe, *url, *migrationsPath)
@@ -144,13 +144,33 @@ func main() {
 		}
 
 	case "version":
-		verifyMigrationsPath(*migrationsPath)
+		verifyPath(*migrationsPath)
 		version, err := migrate.Version(*url, *migrationsPath)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 		fmt.Println(version)
+
+	case "dump":
+		verifyPath(*migrationsPath)
+		timerStart = time.Now()
+		err := migrate.Dump(*url, *migrationsPath)
+		printTimer()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+	case "load":
+		verifyPath(*migrationsPath)
+		timerStart = time.Now()
+		err := migrate.Load(*url, *migrationsPath)
+		printTimer()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 
 	default:
 		fallthrough
@@ -199,7 +219,7 @@ func writePipe(pipe chan interface{}) (ok bool) {
 	return okFlag
 }
 
-func verifyMigrationsPath(path string) {
+func verifyPath(path string) {
 	if path == "" {
 		fmt.Println("Please specify path")
 		os.Exit(1)
@@ -230,6 +250,8 @@ Commands:
    version        Show current migration version
    migrate <n>    Apply migrations -n|+n
    goto <v>       Migrate to version v
+   dump           Dump the entire database to a given file
+   load           Load the database from a given file
    help           Show this help
 
 '-path' defaults to current working directory.

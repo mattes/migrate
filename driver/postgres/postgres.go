@@ -9,10 +9,12 @@ import (
 	"github.com/mattes/migrate/file"
 	"github.com/mattes/migrate/migrate/direction"
 	"strconv"
+  "os/exec"
 )
 
 type Driver struct {
-	db *sql.DB
+	db	*sql.DB
+	url	string
 }
 
 const tableName = "schema_migrations"
@@ -25,11 +27,9 @@ func (driver *Driver) Initialize(url string) error {
 	if err := db.Ping(); err != nil {
 		return err
 	}
-	driver.db = db
+	driver.db	 = db
+	driver.url = url
 
-	if err := driver.ensureVersionTableExists(); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -54,6 +54,11 @@ func (driver *Driver) FilenameExtension() string {
 func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 	defer close(pipe)
 	pipe <- f
+
+	if err := driver.ensureVersionTableExists(); err != nil {
+		pipe <- err
+		return
+	}
 
 	tx, err := driver.db.Begin()
 	if err != nil {
@@ -118,4 +123,37 @@ func (driver *Driver) Version() (uint64, error) {
 	default:
 		return version, nil
 	}
+}
+
+func (driver *Driver) Dump(filepath string, options *map[string]interface{}) error {
+	arguments := []string{driver.url, "-f", filepath}
+
+	if options != nil {
+		if tables, ok := (*options)["exclude_tables"]; ok == true {
+			listOfTables := tables.([]string)
+			for _, v := range(listOfTables) {
+				arguments = append(arguments, "-T", v)
+			}
+		}
+	}
+
+	out, err := exec.Command("pg_dump", arguments...).CombinedOutput()
+	fmt.Println(string(out))
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (driver *Driver) Load(filepath string) error {
+	out, err := exec.Command("psql", driver.url, "-f", filepath).CombinedOutput()
+	fmt.Println(string(out))
+
+	if err != nil {
+		return err
+  }
+
+	return nil
 }

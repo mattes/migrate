@@ -30,3 +30,11 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 func (driver *Driver) Version() (uint64, error) {
 	return uint64(0), nil
 }
+
+func (driver *Driver) Dump(filepath string, options *map[string]interface{}) error {
+	return nil
+}
+
+func (driver *Driver) Load(filepath string) error {
+	return nil
+}
