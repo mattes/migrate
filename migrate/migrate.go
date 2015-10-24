@@ -10,6 +10,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/mattes/migrate/driver"
 	"github.com/mattes/migrate/file"
@@ -212,39 +213,37 @@ func Create(url, migrationsPath, name string) (*file.MigrationFile, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	versionStr := time.Now().UTC().Format("20060102150405")
+	version, _ := strconv.ParseUint(versionStr, 10, 64)
+
+	filenamef := "%d_%s.%s.%s"
+	name = strings.Replace(name, " ", "_", -1)
+
 	files, err := file.ReadMigrationFiles(migrationsPath, file.FilenameRegex(d.FilenameExtension()))
 	if err != nil {
 		return nil, err
 	}
 
-	version := uint64(0)
 	if len(files) > 0 {
-		lastFile := files[len(files)-1]
-		version = lastFile.Version
+		latest := files[len(files)-1].Version
+		if latest >= version {
+			version = latest + 1
+		}
 	}
-	version += 1
-	versionStr := strconv.FormatUint(version, 10)
-
-	length := 4 // TODO(mattes) check existing files and try to guess length
-	if len(versionStr)%length != 0 {
-		versionStr = strings.Repeat("0", length-len(versionStr)%length) + versionStr
-	}
-
-	filenamef := "%s_%s.%s.%s"
-	name = strings.Replace(name, " ", "_", -1)
 
 	mfile := &file.MigrationFile{
 		Version: version,
 		UpFile: &file.File{
 			Path:      migrationsPath,
-			FileName:  fmt.Sprintf(filenamef, versionStr, name, "up", d.FilenameExtension()),
+			FileName:  fmt.Sprintf(filenamef, version, name, "up", d.FilenameExtension()),
 			Name:      name,
 			Content:   []byte(""),
 			Direction: direction.Up,
 		},
 		DownFile: &file.File{
 			Path:      migrationsPath,
-			FileName:  fmt.Sprintf(filenamef, versionStr, name, "down", d.FilenameExtension()),
+			FileName:  fmt.Sprintf(filenamef, version, name, "down", d.FilenameExtension()),
 			Name:      name,
 			Content:   []byte(""),
 			Direction: direction.Down,

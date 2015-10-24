@@ -3,6 +3,7 @@ package migrate
 import (
 	"io/ioutil"
 	"os"
+	"path"
 	"testing"
 	// Ensure imports for each driver we wish to test
 
@@ -23,10 +24,12 @@ func TestCreate(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if _, err := Create(driverUrl, tmpdir, "test_migration"); err != nil {
+		file1, err := Create(driverUrl, tmpdir, "test_migration")
+		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := Create(driverUrl, tmpdir, "another migration"); err != nil {
+		file2, err := Create(driverUrl, tmpdir, "another migration")
+		if err != nil {
 			t.Fatal(err)
 		}
 
@@ -38,20 +41,18 @@ func TestCreate(t *testing.T) {
 			t.Fatal("Expected 2 new files, got", len(files))
 		}
 		expectFiles := []string{
-			"0001_test_migration.up.sql", "0001_test_migration.down.sql",
-			"0002_another_migration.up.sql", "0002_another_migration.down.sql",
+			file1.UpFile.FileName, file1.DownFile.FileName,
+			file2.UpFile.FileName, file2.DownFile.FileName,
 		}
-		foundCounter := 0
 		for _, expectFile := range expectFiles {
-			for _, file := range files {
-				if expectFile == file.Name() {
-					foundCounter += 1
-					break
-				}
+			filepath := path.Join(tmpdir, expectFile)
+			if _, err := os.Stat(filepath); os.IsNotExist(err) {
+				t.Errorf("Can't find migration file: %s", filepath)
 			}
 		}
-		if foundCounter != len(expectFiles) {
-			t.Error("not all expected files have been found")
+
+		if file1.Version == file2.Version {
+			t.Errorf("files can't same version: %d", file1.Version)
 		}
 	}
 }
@@ -65,7 +66,7 @@ func TestReset(t *testing.T) {
 		}
 
 		Create(driverUrl, tmpdir, "migration1")
-		Create(driverUrl, tmpdir, "migration2")
+		file, _ := Create(driverUrl, tmpdir, "migration2")
 
 		errs, ok := ResetSync(driverUrl, tmpdir)
 		if !ok {
@@ -75,8 +76,8 @@ func TestReset(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if version != 2 {
-			t.Fatalf("Expected version 2, got %v", version)
+		if version != file.Version {
+			t.Fatalf("Expected version %d, got %v", file.Version, version)
 		}
 	}
 }
@@ -90,7 +91,7 @@ func TestDown(t *testing.T) {
 		}
 
 		Create(driverUrl, tmpdir, "migration1")
-		Create(driverUrl, tmpdir, "migration2")
+		file, _ := Create(driverUrl, tmpdir, "migration2")
 
 		errs, ok := ResetSync(driverUrl, tmpdir)
 		if !ok {
@@ -100,8 +101,8 @@ func TestDown(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if version != 2 {
-			t.Fatalf("Expected version 2, got %v", version)
+		if version != file.Version {
+			t.Fatalf("Expected version %d, got %v", file.Version, version)
 		}
 
 		errs, ok = DownSync(driverUrl, tmpdir)
@@ -127,7 +128,7 @@ func TestUp(t *testing.T) {
 		}
 
 		Create(driverUrl, tmpdir, "migration1")
-		Create(driverUrl, tmpdir, "migration2")
+		file, _ := Create(driverUrl, tmpdir, "migration2")
 
 		errs, ok := DownSync(driverUrl, tmpdir)
 		if !ok {
@@ -149,8 +150,8 @@ func TestUp(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if version != 2 {
-			t.Fatalf("Expected version 2, got %v", version)
+		if version != file.Version {
+			t.Fatalf("Expected version %d, got %v", file.Version, version)
 		}
 	}
 }
@@ -164,7 +165,7 @@ func TestRedo(t *testing.T) {
 		}
 
 		Create(driverUrl, tmpdir, "migration1")
-		Create(driverUrl, tmpdir, "migration2")
+		file, _ := Create(driverUrl, tmpdir, "migration2")
 
 		errs, ok := ResetSync(driverUrl, tmpdir)
 		if !ok {
@@ -174,8 +175,8 @@ func TestRedo(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if version != 2 {
-			t.Fatalf("Expected version 2, got %v", version)
+		if version != file.Version {
+			t.Fatalf("Expected version %d, got %v", file.Version, version)
 		}
 
 		errs, ok = RedoSync(driverUrl, tmpdir)
@@ -186,8 +187,8 @@ func TestRedo(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if version != 2 {
-			t.Fatalf("Expected version 2, got %v", version)
+		if version != file.Version {
+			t.Fatalf("Expected version %d, got %v", file.Version, version)
 		}
 	}
 }
@@ -200,8 +201,8 @@ func TestMigrate(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		Create(driverUrl, tmpdir, "migration1")
-		Create(driverUrl, tmpdir, "migration2")
+		file1, _ := Create(driverUrl, tmpdir, "migration1")
+		file2, _ := Create(driverUrl, tmpdir, "migration2")
 
 		errs, ok := ResetSync(driverUrl, tmpdir)
 		if !ok {
@@ -211,8 +212,8 @@ func TestMigrate(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if version != 2 {
-			t.Fatalf("Expected version 2, got %v", version)
+		if version != file2.Version {
+			t.Fatalf("Expected version %d, got %v", file2.Version, version)
 		}
 
 		errs, ok = MigrateSync(driverUrl, tmpdir, -2)
@@ -235,8 +236,8 @@ func TestMigrate(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if version != 1 {
-			t.Fatalf("Expected version 1, got %v", version)
+		if version != file1.Version {
+			t.Fatalf("Expected version %d, got %v", file1.Version, version)
 		}
 	}
 }

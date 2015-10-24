@@ -52,7 +52,7 @@ func (driver *Driver) Close() error {
 }
 
 func (driver *Driver) ensureVersionTableExists() error {
-	_, err := driver.db.Exec("CREATE TABLE IF NOT EXISTS " + tableName + " (version int not null primary key);")
+	_, err := driver.db.Exec("CREATE TABLE IF NOT EXISTS " + tableName + " (version bigint not null primary key);")
 
 	if _, isWarn := err.(mysql.MySQLWarnings); err != nil && !isWarn {
 		return err
@@ -178,6 +178,26 @@ func (driver *Driver) Version() (uint64, error) {
 	default:
 		return version, nil
 	}
+}
+
+func (driver *Driver) Versions() ([]uint64, error) {
+	versions := []uint64{}
+
+	rows, err := driver.db.Query("SELECT version FROM " + tableName)
+	if err != nil {
+		return versions, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var version uint64
+		err := rows.Scan(&version)
+		if err != nil {
+			return versions, err
+		}
+		versions = append(versions, version)
+	}
+	err = rows.Err()
+	return versions, err
 }
 
 func init() {

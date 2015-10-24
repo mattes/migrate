@@ -126,6 +126,26 @@ func (driver *Driver) Version() (uint64, error) {
 	}
 }
 
+func (driver *Driver) Versions() ([]uint64, error) {
+	versions := []uint64{}
+
+	rows, err := driver.db.Query("SELECT version FROM " + tableName)
+	if err != nil {
+		return versions, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var version uint64
+		err := rows.Scan(&version)
+		if err != nil {
+			return versions, err
+		}
+		versions = append(versions, version)
+	}
+	err = rows.Err()
+	return versions, err
+}
+
 func init() {
 	driver.RegisterDriver("sqlite3", &Driver{})
 }

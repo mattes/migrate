@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/mattes/migrate/migrate/direction"
 	"go/token"
 	"io/ioutil"
 	"path"
@@ -13,6 +12,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/mattes/migrate/migrate/direction"
 )
 
 var filenameRegex = `^([0-9]+)_(.*)\.(up|down)\.%s$`
@@ -165,6 +166,7 @@ func ReadMigrationFiles(path string, filenameRegex *regexp.Regexp) (files Migrat
 	tmpFiles := make([]*tmpFile, 0)
 	tmpFileMap := map[uint64]map[direction.Direction]tmpFile{}
 	for _, file := range ioFiles {
+
 		version, name, d, err := parseFilenameSchema(file.Name(), filenameRegex)
 		if err == nil {
 			if _, ok := tmpFileMap[version]; !ok {
