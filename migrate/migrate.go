@@ -26,8 +26,10 @@ func Up(pipe chan interface{}, url, migrationsPath string) {
 			pipe <- err
 
 		}
-		if err = d.Close(); err != nil {
-			pipe <- err
+		if d != nil {
+			if err = d.Close(); err != nil {
+				pipe <- err
+			}
 		}
 		go pipep.Close(pipe, nil)
 	}()
@@ -64,8 +66,10 @@ func Down(pipe chan interface{}, url, migrationsPath string) {
 			pipe <- err
 
 		}
-		if err = d.Close(); err != nil {
-			pipe <- err
+		if d != nil {
+			if err = d.Close(); err != nil {
+				pipe <- err
+			}
 		}
 		go pipep.Close(pipe, nil)
 	}()
@@ -143,8 +147,10 @@ func Migrate(pipe chan interface{}, url, migrationsPath string, relativeN int) {
 			pipe <- err
 
 		}
-		if err = d.Close(); err != nil {
-			pipe <- err
+		if d != nil {
+			if err = d.Close(); err != nil {
+				pipe <- err
+			}
 		}
 		go pipep.Close(pipe, nil)
 	}()
