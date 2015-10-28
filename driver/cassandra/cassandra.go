@@ -4,6 +4,7 @@ package cassandra
 import (
 	"fmt"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -60,7 +61,6 @@ func (driver *Driver) Initialize(rawurl string) error {
 	}
 
 	driver.session, err = cluster.CreateSession()
-
 	if err != nil {
 		return err
 	}
@@ -68,6 +68,7 @@ func (driver *Driver) Initialize(rawurl string) error {
 	if err := driver.ensureVersionTableExists(); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -105,13 +106,11 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 	}
 
 	if f.Direction == direction.Up {
-		if err := driver.session.Query("INSERT INTO "+tableName+" (version) VALUES (?)", f.Version).Exec(); err != nil {
-			pipe <- err
+		if err = driver.session.Query("INSERT INTO "+tableName+" (version) VALUES (?)", f.Version).Exec(); err != nil {
 			return
 		}
 	} else if f.Direction == direction.Down {
-		if err := driver.session.Query("DELETE FROM "+tableName+" WHERE version = ?", f.Version).Exec(); err != nil {
-			pipe <- err
+		if err = driver.session.Query("DELETE FROM "+tableName+" WHERE version = ?", f.Version).Exec(); err != nil {
 			return
 		}
 	}
@@ -128,20 +127,23 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 	}
 }
 
-func (driver *Driver) Version() (uint64, error) {
-	var version int64
-	err := driver.session.Query("SELECT version FROM " + tableName).Scan(&version)
-	return uint64(version), err
+func (driver *Driver) Version() (file.Version, error) {
+	versions, err := driver.Versions()
+	if len(versions) == 0 {
+		return 0, err
+	}
+	return versions[0], err
 }
 
-func (driver *Driver) Versions() ([]uint64, error) {
-	versions := []uint64{}
+func (driver *Driver) Versions() (file.Versions, error) {
+	versions := file.Versions{}
 	iter := driver.session.Query("SELECT version FROM " + tableName).Iter()
 	var version int64
 	for iter.Scan(&version) {
-		versions = append(versions, uint64(version))
+		versions = append(versions, file.Version(version))
 	}
 	err := iter.Close()
+	sort.Sort(sort.Reverse(versions))
 	return versions, err
 }
 

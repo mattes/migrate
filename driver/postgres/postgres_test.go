@@ -88,7 +88,7 @@ func TestMigrate(t *testing.T) {
 	}
 
 	// Check versions applied in DB
-	expectedVersions := []uint64{20060102150405}
+	expectedVersions := file.Versions{20060102150405}
 	versions, err := d.Versions()
 	if err != nil {
 		t.Errorf("Could not fetch versions: %s", err)
@@ -113,7 +113,7 @@ func TestMigrate(t *testing.T) {
 	}
 
 	// Check versions applied in DB
-	expectedVersions = []uint64{}
+	expectedVersions = file.Versions{}
 	versions, err = d.Versions()
 	if err != nil {
 		t.Errorf("Could not fetch versions: %s", err)

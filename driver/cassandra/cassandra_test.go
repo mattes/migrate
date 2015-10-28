@@ -32,14 +32,14 @@ func TestMigrate(t *testing.T) {
 	cluster.Timeout = 1 * time.Minute
 
 	session, err = cluster.CreateSession()
-
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := session.Query(`CREATE KEYSPACE IF NOT EXISTS migrate WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1};`).Exec(); err != nil {
+	if err := resetKeySpace(session); err != nil {
 		t.Fatal(err)
 	}
+
 	cluster.Keyspace = "migrate"
 	session, err = cluster.CreateSession()
 	driverUrl = "cassandra://" + host + ":" + port + "/migrate"
@@ -106,7 +106,7 @@ func TestMigrate(t *testing.T) {
 	}
 
 	// Check versions applied in DB
-	expectedVersions := []uint64{20060102150405}
+	expectedVersions := file.Versions{20060102150405}
 	versions, err := d.Versions()
 	if err != nil {
 		t.Errorf("Could not fetch versions: %s", err)
@@ -131,7 +131,7 @@ func TestMigrate(t *testing.T) {
 	}
 
 	// Check versions applied in DB
-	expectedVersions = []uint64{}
+	expectedVersions = file.Versions{}
 	versions, err = d.Versions()
 	if err != nil {
 		t.Errorf("Could not fetch versions: %s", err)
@@ -141,8 +141,23 @@ func TestMigrate(t *testing.T) {
 		t.Errorf("Expected versions to be: %v, got: %v", expectedVersions, versions)
 	}
 
+	if err := resetKeySpace(session); err != nil {
+		t.Fatal(err)
+	}
+
 	if err := d.Close(); err != nil {
 		t.Fatal(err)
 	}
 
+}
+
+func resetKeySpace(session *gocql.Session) error {
+	if err := session.Query(`DROP KEYSPACE migrate;`).Exec(); err != nil {
+		return err
+	}
+
+	if err := session.Query(`CREATE KEYSPACE IF NOT EXISTS migrate WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1};`).Exec(); err != nil {
+		return err
+	}
+	return nil
 }

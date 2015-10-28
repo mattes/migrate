@@ -24,6 +24,37 @@ func FilenameRegex(filenameExtension string) *regexp.Regexp {
 	return regexp.MustCompile(fmt.Sprintf(filenameRegex, filenameExtension))
 }
 
+type Version uint64
+type Versions []Version
+
+func (versions Versions) Contains(version Version) bool {
+	for _, v := range versions {
+		if v == version {
+			return true
+		}
+	}
+	return false
+}
+
+// Len is the number of elements in the collection.
+// Required by Sort Interface{}
+func (v Versions) Len() int {
+	return len(v)
+}
+
+// Less reports whether the element with
+// index i should sort before the element with index j.
+// Required by Sort Interface{}
+func (v Versions) Less(i, j int) bool {
+	return v[i] < v[j]
+}
+
+// Swap swaps the elements with indexes i and j.
+// Required by Sort Interface{}
+func (v Versions) Swap(i, j int) {
+	v[i], v[j] = v[j], v[i]
+}
+
 // File represents one file on disk.
 // Example: 001_initial_plan_to_do_sth.up.sql
 type File struct {
@@ -34,7 +65,7 @@ type File struct {
 	FileName string
 
 	// version parsed from filename
-	Version uint64
+	Version Version
 
 	// the actual migration name parsed from filename
 	Name string
@@ -52,7 +83,7 @@ type Files []File
 // MigrationFile represents both the UP and the DOWN migration file.
 type MigrationFile struct {
 	// version of the migration file, parsed from the filenames
-	Version uint64
+	Version Version
 
 	// reference to the *up* migration file
 	UpFile *File
@@ -76,33 +107,29 @@ func (f *File) ReadContent() error {
 	return nil
 }
 
-// ToFirstFrom fetches all (down) migration files including the migration file
-// of the current version to the very first migration file.
-func (mf *MigrationFiles) ToFirstFrom(version uint64) (Files, error) {
-	sort.Sort(sort.Reverse(mf))
-	files := make(Files, 0)
-	for _, migrationFile := range *mf {
-		if migrationFile.Version <= version && migrationFile.DownFile != nil {
-			files = append(files, *migrationFile.DownFile)
-		}
-	}
-	return files, nil
-}
-
-// ToLastFrom fetches all (up) migration files to the most recent migration file.
-// The migration file of the current version is not included.
-func (mf *MigrationFiles) ToLastFrom(version uint64) (Files, error) {
+func (mf *MigrationFiles) Pending(versions Versions) (Files, error) {
 	sort.Sort(mf)
 	files := make(Files, 0)
 	for _, migrationFile := range *mf {
-		if migrationFile.Version > version && migrationFile.UpFile != nil {
+		if !versions.Contains(migrationFile.Version) && migrationFile.UpFile != nil {
 			files = append(files, *migrationFile.UpFile)
 		}
 	}
 	return files, nil
 }
 
-// From travels relatively through migration files.
+func (mf *MigrationFiles) Applied(versions Versions) (Files, error) {
+	sort.Sort(sort.Reverse(mf))
+	files := make(Files, 0)
+	for _, migrationFile := range *mf {
+		if versions.Contains(migrationFile.Version) && migrationFile.DownFile != nil {
+			files = append(files, *migrationFile.DownFile)
+		}
+	}
+	return files, nil
+}
+
+// Relative travels relatively through migration files.
 //
 // 		+1 will fetch the next up migration file
 // 		+2 will fetch the next two up migration files
@@ -110,7 +137,7 @@ func (mf *MigrationFiles) ToLastFrom(version uint64) (Files, error) {
 // 		-1 will fetch the the previous down migration file
 // 		-2 will fetch the next two previous down migration files
 //		-n will fetch ...
-func (mf *MigrationFiles) From(version uint64, relativeN int) (Files, error) {
+func (mf *MigrationFiles) Relative(relativeN int, versions Versions) (Files, error) {
 	var d direction.Direction
 	if relativeN > 0 {
 		d = direction.Up
@@ -120,34 +147,18 @@ func (mf *MigrationFiles) From(version uint64, relativeN int) (Files, error) {
 		return nil, nil
 	}
 
-	if d == direction.Down {
-		sort.Sort(sort.Reverse(mf))
+	var files Files
+	var err error
+	if d == direction.Up {
+		files, err = mf.Pending(versions)
 	} else {
-		sort.Sort(mf)
+		relativeN = -relativeN
+		files, err = mf.Applied(versions)
 	}
-
-	files := make(Files, 0)
-
-	counter := relativeN
-	if relativeN < 0 {
-		counter = relativeN * -1
+	if relativeN > len(files) {
+		relativeN = len(files)
 	}
-
-	for _, migrationFile := range *mf {
-		if counter > 0 {
-
-			if d == direction.Up && migrationFile.Version > version && migrationFile.UpFile != nil {
-				files = append(files, *migrationFile.UpFile)
-				counter -= 1
-			} else if d == direction.Down && migrationFile.Version <= version && migrationFile.DownFile != nil {
-				files = append(files, *migrationFile.DownFile)
-				counter -= 1
-			}
-		} else {
-			break
-		}
-	}
-	return files, nil
+	return files[:relativeN], err
 }
 
 // ReadMigrationFiles reads all migration files from a given path
@@ -158,13 +169,13 @@ func ReadMigrationFiles(path string, filenameRegex *regexp.Regexp) (files Migrat
 		return nil, err
 	}
 	type tmpFile struct {
-		version  uint64
+		version  Version
 		name     string
 		filename string
 		d        direction.Direction
 	}
 	tmpFiles := make([]*tmpFile, 0)
-	tmpFileMap := map[uint64]map[direction.Direction]tmpFile{}
+	tmpFileMap := map[Version]map[direction.Direction]tmpFile{}
 	for _, file := range ioFiles {
 
 		version, name, d, err := parseFilenameSchema(file.Name(), filenameRegex)
@@ -182,7 +193,7 @@ func ReadMigrationFiles(path string, filenameRegex *regexp.Regexp) (files Migrat
 	}
 
 	// put tmpFiles into MigrationFile struct
-	parsedVersions := make(map[uint64]bool)
+	parsedVersions := make(map[Version]bool)
 	newFiles := make(MigrationFiles, 0)
 	for _, file := range tmpFiles {
 		if _, ok := parsedVersions[file.version]; !ok {
@@ -252,13 +263,14 @@ func ReadMigrationFiles(path string, filenameRegex *regexp.Regexp) (files Migrat
 }
 
 // parseFilenameSchema parses the filename
-func parseFilenameSchema(filename string, filenameRegex *regexp.Regexp) (version uint64, name string, d direction.Direction, err error) {
+func parseFilenameSchema(filename string, filenameRegex *regexp.Regexp) (version Version, name string, d direction.Direction, err error) {
 	matches := filenameRegex.FindStringSubmatch(filename)
 	if len(matches) != 4 {
 		return 0, "", 0, errors.New("Unable to parse filename schema")
 	}
 
-	version, err = strconv.ParseUint(matches[1], 10, 0)
+	v, err := strconv.ParseUint(matches[1], 10, 0)
+	version = Version(v)
 	if err != nil {
 		return 0, "", 0, errors.New(fmt.Sprintf("Unable to parse version '%v' in filename schema", matches[0]))
 	}

@@ -1,18 +1,19 @@
 package file
 
 import (
-	"github.com/mattes/migrate/migrate/direction"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
+
+	"github.com/mattes/migrate/migrate/direction"
 )
 
 func TestParseFilenameSchema(t *testing.T) {
 	var tests = []struct {
 		filename          string
 		filenameExtension string
-		expectVersion     uint64
+		expectVersion     Version
 		expectName        string
 		expectDirection   direction.Direction
 		expectErr         bool
@@ -151,63 +152,39 @@ func TestFiles(t *testing.T) {
 		t.Error("file name is not correct", files[0].UpFile.FileName)
 	}
 
-	// test file.From()
+	// test file.Relative()
 	// there should be the following versions:
 	// 1(up&down), 2(up&down), 101(up&down), 301(up), 401(down)
 	var tests = []struct {
-		from        uint64
-		relative    int
-		expectRange []uint64
+		appliedVersions Versions
+		relative        int
+		expectRange     Versions
 	}{
-		{0, 2, []uint64{1, 2}},
-		{1, 4, []uint64{2, 101, 301}},
-		{1, 0, nil},
-		{0, 1, []uint64{1}},
-		{0, 0, nil},
-		{101, -2, []uint64{101, 2}},
-		{401, -1, []uint64{401}},
+		{Versions{}, 2, Versions{1, 2}},
+		{Versions{1}, 4, Versions{2, 101, 301}},
+		{Versions{1}, 0, nil},
+		{Versions{}, 1, Versions{1}},
+		{Versions{}, 0, nil},
+		{Versions{1, 2, 101}, -2, Versions{101, 2}},
+		{Versions{1, 2, 101, 301, 401}, -1, Versions{401}},
 	}
 
 	for _, test := range tests {
-		rangeFiles, err := files.From(test.from, test.relative)
+		rangeFiles, err := files.Relative(test.relative, test.appliedVersions)
 		if err != nil {
 			t.Error("Unable to fetch range:", err)
 		}
 		if len(rangeFiles) != len(test.expectRange) {
-			t.Fatalf("file.From(): expected %v files, got %v. For test %v.", len(test.expectRange), len(rangeFiles), test.expectRange)
+			t.Fatalf("file.Relative(): expected %v files, got %v. For test %v.", len(test.expectRange), len(rangeFiles), test.expectRange)
 		}
 
 		for i, version := range test.expectRange {
 			if rangeFiles[i].Version != version {
-				t.Fatal("file.From(): returned files dont match expectations", test.expectRange)
+				t.Logf("rangeFiles: %v\n", rangeFiles)
+				t.Fatal("file.Relative(): returned files dont match expectations", test.expectRange)
 			}
 		}
 	}
-
-	// test ToFirstFrom
-	tffFiles, err := files.ToFirstFrom(401)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(tffFiles) != 4 {
-		t.Fatalf("Wrong number of files returned by ToFirstFrom(), expected %v, got %v.", 5, len(tffFiles))
-	}
-	if tffFiles[0].Direction != direction.Down {
-		t.Error("ToFirstFrom() did not return DownFiles")
-	}
-
-	// test ToLastFrom
-	tofFiles, err := files.ToLastFrom(0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(tofFiles) != 4 {
-		t.Fatalf("Wrong number of files returned by ToLastFrom(), expected %v, got %v.", 5, len(tofFiles))
-	}
-	if tofFiles[0].Direction != direction.Up {
-		t.Error("ToFirstFrom() did not return UpFiles")
-	}
-
 }
 
 func TestDuplicateFiles(t *testing.T) {

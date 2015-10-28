@@ -31,10 +31,10 @@ type Driver interface {
 	Migrate(file file.File, pipe chan interface{})
 
 	// Version returns the current migration version.
-	Version() (uint64, error)
+	Version() (file.Version, error)
 
 	// Versions returns the list of applied migrations
-	Versions() ([]uint64, error)
+	Versions() (file.Versions, error)
 }
 
 // New returns Driver and calls Initialize on it
