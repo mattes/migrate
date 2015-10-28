@@ -152,12 +152,6 @@ func TestMigrate(t *testing.T) {
 }
 
 func resetKeySpace(session *gocql.Session) error {
-	if err := session.Query(`DROP KEYSPACE migrate;`).Exec(); err != nil {
-		return err
-	}
-
-	if err := session.Query(`CREATE KEYSPACE IF NOT EXISTS migrate WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1};`).Exec(); err != nil {
-		return err
-	}
-	return nil
+	session.Query(`DROP KEYSPACE migrate;`).Exec()
+	return session.Query(`CREATE KEYSPACE IF NOT EXISTS migrate WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1};`).Exec()
 }
