@@ -176,6 +176,11 @@ func TestUp(t *testing.T) {
 		if version != file.Version {
 			t.Fatalf("Expected version %d, got %v", file.Version, version)
 		}
+
+		errs, ok = DownSync(driverUrl, tmpdir)
+		if !ok {
+			t.Fatal(errs)
+		}
 	}
 }
 
@@ -227,8 +232,15 @@ func TestMigrate(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		file1, _ := Create(driverUrl, tmpdir, "migration1")
-		file2, _ := Create(driverUrl, tmpdir, "migration2")
+		file1, err := Create(driverUrl, tmpdir, "migration1")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		file2, err := Create(driverUrl, tmpdir, "migration2")
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		errs, ok := ResetSync(driverUrl, tmpdir)
 		if !ok {
