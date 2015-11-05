@@ -56,7 +56,7 @@ func (v Versions) Swap(i, j int) {
 }
 
 // File represents one file on disk.
-// Example: 001_initial_plan_to_do_sth.up.sql
+// Example: 20060102150405_initial_plan_to_do_sth.up.sql
 type File struct {
 	// absolute path to file
 	Path string
