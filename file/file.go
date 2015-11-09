@@ -43,6 +43,9 @@ type File struct {
 
 	// UP or DOWN migration
 	Direction direction.Direction
+
+	// Use transaction
+	UseTransactions bool
 }
 
 // Files is a slice of Files
@@ -67,9 +70,15 @@ type MigrationFiles []MigrationFile
 func (f *File) ReadContent() error {
 	if len(f.Content) == 0 {
 		content, err := ioutil.ReadFile(path.Join(f.Path, f.FileName))
+
+		lines := strings.Split(string(content), "\n")
+
+		f.UseTransactions = !strings.Contains(lines[0], "-- @NoTransactions")
+
 		if err != nil {
 			return err
 		}
+
 		f.Content = content
 	}
 	return nil
