@@ -71,9 +71,10 @@ func (f *File) ReadContent() error {
 	if len(f.Content) == 0 {
 		content, err := ioutil.ReadFile(path.Join(f.Path, f.FileName))
 
-		lines := strings.Split(string(content), "\n")
+		r := bytes.NewBuffer(content)
+		line, err := r.ReadString('\n')
 
-		f.UseTransactions = !strings.Contains(lines[0], "-- @NoTransactions")
+		f.UseTransactions = !strings.Contains(line, "-- @NoTransactions")
 
 		if err != nil {
 			return err
