@@ -14,7 +14,4 @@ before_install:
     - sudo mv docker-compose /usr/local/bin
     - sed -i -e 's/golang/golang:'"$TRAVIS_GO_VERSION"'/' docker-compose.yml
 
-before_script:
-    - sleep 25
-
 script: make test
