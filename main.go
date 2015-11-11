@@ -1,16 +1,16 @@
 // Package main is the CLI.
 // You can use the CLI via Terminal.
-// import "github.com/mattes/migrate/migrate" for usage within Go.
+// import "github.com/codeship/migrate/migrate" for usage within Go.
 package main
 
 import (
 	"flag"
 	"fmt"
 	"github.com/fatih/color"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate"
-	"github.com/mattes/migrate/migrate/direction"
-	pipep "github.com/mattes/migrate/pipe"
+	"github.com/codeship/migrate/file"
+	"github.com/codeship/migrate/migrate"
+	"github.com/codeship/migrate/migrate/direction"
+	pipep "github.com/codeship/migrate/pipe"
 	"os"
 	"strconv"
 	"time"
