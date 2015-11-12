@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/lib/pq"
 	"github.com/codeship/migrate/file"
 	"github.com/codeship/migrate/migrate/direction"
+	"github.com/lib/pq"
 	"strconv"
 )
 

@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gocql/gocql"
 	"github.com/codeship/migrate/file"
 	"github.com/codeship/migrate/migrate/direction"
 	pipep "github.com/codeship/migrate/pipe"
+	"github.com/gocql/gocql"
 )
 
 func TestMigrate(t *testing.T) {

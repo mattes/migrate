@@ -6,11 +6,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/fatih/color"
 	"github.com/codeship/migrate/file"
 	"github.com/codeship/migrate/migrate"
 	"github.com/codeship/migrate/migrate/direction"
 	pipep "github.com/codeship/migrate/pipe"
+	"github.com/fatih/color"
+	_ "github.com/mattes/migrate/driver/postgres"
 	"os"
 	"strconv"
 	"time"
