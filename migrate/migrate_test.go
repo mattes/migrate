@@ -24,6 +24,11 @@ func tearDown(driverUrl, tmpdir string) {
 	os.RemoveAll(tmpdir)
 }
 
+func tearDown(driverUrl, tmpdir string) {
+	DownSync(driverUrl, tmpdir)
+	os.RemoveAll(tmpdir)
+}
+
 func TestCreate(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
