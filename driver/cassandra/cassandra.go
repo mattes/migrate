@@ -4,6 +4,7 @@ package cassandra
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -51,6 +52,10 @@ func (driver *Driver) Initialize(rawurl string) error {
 	cluster.Keyspace = u.Path[1:len(u.Path)]
 	cluster.Consistency = gocql.All
 	cluster.Timeout = 1 * time.Minute
+	capath := os.Getenv("CASSANDRA_CA_PATH")
+	if capath != "" {
+		cluster.SslOpts = &gocql.SslOptions{CaPath: capath}
+	}
 
 	// Check if url user struct is null
 	if u.User != nil {
