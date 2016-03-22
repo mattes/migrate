@@ -18,7 +18,7 @@ func TestMigrate(t *testing.T) {
 
 	host := os.Getenv("CASSANDRA_PORT_9042_TCP_ADDR")
 	port := os.Getenv("CASSANDRA_PORT_9042_TCP_PORT")
-	driverUrl := "cassandra://" + host + ":" + port + "/system"
+	driverUrl := "cassandra://" + host + ":" + port + "/system?protocol=4"
 
 	// prepare a clean test database
 	u, err := url.Parse(driverUrl)
@@ -30,6 +30,7 @@ func TestMigrate(t *testing.T) {
 	cluster.Keyspace = u.Path[1:len(u.Path)]
 	cluster.Consistency = gocql.All
 	cluster.Timeout = 1 * time.Minute
+	cluster.ProtoVersion = 4
 
 	session, err = cluster.CreateSession()
 	if err != nil {
@@ -42,7 +43,7 @@ func TestMigrate(t *testing.T) {
 
 	cluster.Keyspace = "migrate"
 	session, err = cluster.CreateSession()
-	driverUrl = "cassandra://" + host + ":" + port + "/migrate"
+	driverUrl = "cassandra://" + host + ":" + port + "/migrate?protocol=4"
 
 	d := &Driver{}
 	if err := d.Initialize(driverUrl); err != nil {
