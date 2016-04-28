@@ -2,10 +2,11 @@ package sqlite3
 
 import (
 	"database/sql"
+	"testing"
+
 	"github.com/codeship/migrate/file"
 	"github.com/codeship/migrate/migrate/direction"
 	pipep "github.com/codeship/migrate/pipe"
-	"testing"
 )
 
 // TestMigrate runs some additional tests on Migrate()

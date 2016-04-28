@@ -6,15 +6,20 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+	"strconv"
+	"time"
+
+	"github.com/fatih/color"
+	_ "github.com/codeship/migrate/driver/bash"
+	_ "github.com/codeship/migrate/driver/cassandra"
+	_ "github.com/codeship/migrate/driver/mysql"
+	_ "github.com/codeship/migrate/driver/postgres"
+	_ "github.com/codeship/migrate/driver/sqlite3"
 	"github.com/codeship/migrate/file"
 	"github.com/codeship/migrate/migrate"
 	"github.com/codeship/migrate/migrate/direction"
 	pipep "github.com/codeship/migrate/pipe"
-	"github.com/fatih/color"
-	_ "github.com/mattes/migrate/driver/postgres"
-	"os"
-	"strconv"
-	"time"
 )
 
 var url = flag.String("url", os.Getenv("MIGRATE_URL"), "")
@@ -22,9 +27,12 @@ var migrationsPath = flag.String("path", "", "")
 var version = flag.Bool("version", false, "Show migrate version")
 
 func main() {
+	flag.Usage = func() {
+		helpCmd()
+	}
+
 	flag.Parse()
 	command := flag.Arg(0)
-
 	if *version {
 		fmt.Println(Version)
 		os.Exit(0)

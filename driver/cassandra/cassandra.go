@@ -3,12 +3,15 @@ package cassandra
 
 import (
 	"fmt"
-	"github.com/codeship/migrate/file"
-	"github.com/codeship/migrate/migrate/direction"
-	"github.com/gocql/gocql"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gocql/gocql"
+	"github.com/codeship/migrate/driver"
+	"github.com/codeship/migrate/file"
+	"github.com/codeship/migrate/migrate/direction"
 )
 
 type Driver struct {
@@ -38,10 +41,10 @@ const (
 )
 
 // Cassandra Driver URL format:
-// cassandra://host:port/keyspace
+// cassandra://host:port/keyspace?protocol=version
 //
 // Example:
-// cassandra://localhost/SpaceOfKeys
+// cassandra://localhost/SpaceOfKeys?protocol=4
 func (driver *Driver) Initialize(rawurl string) error {
 	u, err := url.Parse(rawurl)
 
@@ -49,6 +52,15 @@ func (driver *Driver) Initialize(rawurl string) error {
 	cluster.Keyspace = u.Path[1:len(u.Path)]
 	cluster.Consistency = gocql.All
 	cluster.Timeout = 1 * time.Minute
+
+	if len(u.Query().Get("protocol")) > 0 {
+		protoversion, err := strconv.Atoi(u.Query().Get("protocol"))
+		if err != nil {
+			return err
+		}
+
+		cluster.ProtoVersion = protoversion
+	}
 
 	// Check if url user struct is null
 	if u.User != nil {
@@ -152,4 +164,8 @@ func (driver *Driver) Version() (uint64, error) {
 	var version int64
 	err := driver.session.Query("SELECT version FROM "+tableName+" WHERE versionRow = ?", versionRow).Scan(&version)
 	return uint64(version) - 1, err
+}
+
+func init() {
+	driver.RegisterDriver("cassandra", &Driver{})
 }

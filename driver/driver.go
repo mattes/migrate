@@ -2,15 +2,9 @@
 package driver
 
 import (
-	"errors"
 	"fmt"
 	neturl "net/url" // alias to allow `url string` func signature in New
 
-	"github.com/codeship/migrate/driver/bash"
-	"github.com/codeship/migrate/driver/cassandra"
-	"github.com/codeship/migrate/driver/mysql"
-	"github.com/codeship/migrate/driver/postgres"
-	"github.com/codeship/migrate/driver/sqlite3"
 	"github.com/codeship/migrate/file"
 )
 
@@ -47,51 +41,19 @@ func New(url string) (Driver, error) {
 		return nil, err
 	}
 
-	switch u.Scheme {
-	case "postgres":
-		d := &postgres.Driver{}
-		verifyFilenameExtension("postgres", d)
-		if err := d.Initialize(url); err != nil {
-			return nil, err
-		}
-		return d, nil
-
-	case "mysql":
-		d := &mysql.Driver{}
-		verifyFilenameExtension("mysql", d)
-		if err := d.Initialize(url); err != nil {
-			return nil, err
-		}
-		return d, nil
-
-	case "bash":
-		d := &bash.Driver{}
-		verifyFilenameExtension("bash", d)
-		if err := d.Initialize(url); err != nil {
-			return nil, err
-		}
-		return d, nil
-
-	case "cassandra":
-		d := &cassandra.Driver{}
-		verifyFilenameExtension("cassanda", d)
-		if err := d.Initialize(url); err != nil {
-			return nil, err
-		}
-		return d, nil
-	case "sqlite3":
-		d := &sqlite3.Driver{}
-		verifyFilenameExtension("sqlite3", d)
-		if err := d.Initialize(url); err != nil {
-			return nil, err
-		}
-		return d, nil
-	default:
-		return nil, errors.New(fmt.Sprintf("Driver '%s' not found.", u.Scheme))
+	d := GetDriver(u.Scheme)
+	if d == nil {
+		return nil, fmt.Errorf("Driver '%s' not found.", u.Scheme)
 	}
+	verifyFilenameExtension(u.Scheme, d)
+	if err := d.Initialize(url); err != nil {
+		return nil, err
+	}
+
+	return d, nil
 }
 
-// verifyFilenameExtension panics if the drivers filename extension
+// verifyFilenameExtension panics if the driver's filename extension
 // is not correct or empty.
 func verifyFilenameExtension(driverName string, d Driver) {
 	f := d.FilenameExtension()
