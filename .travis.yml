@@ -5,6 +5,8 @@ go:
   - 1.4
   - 1.5
 
+go_import_path: github.com/mattes/migrate
+
 services:
   - docker
 
