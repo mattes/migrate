@@ -54,7 +54,7 @@ func (driver *Driver) ensureVersionTableExists() error {
 	if dataType != "integer" {
 		return nil
 	}
-	_, err := driver.db.Exec("ALTER TABLE " + pq.QuoteIdentifier(tableName) + " ALTER COLUMN version TYPE bigint")
+	_, err := driver.db.Exec("ALTER TABLE " + tableName + " ALTER COLUMN version TYPE bigint")
 	return err
 }
 
