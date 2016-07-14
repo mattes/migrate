@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"strconv"
 
 	"github.com/lib/pq"
@@ -19,14 +20,23 @@ type Driver struct {
 
 const tableName = "schema_migrations"
 
-func (driver *Driver) Initialize(url string) error {
-	db, err := sql.Open("postgres", url)
+func (driver *Driver) Initialize(connUrl string) error {
+	db, err := sql.Open("postgres", connUrl)
 	if err != nil {
 		return err
 	}
 	if err := db.Ping(); err != nil {
 		return err
 	}
+
+	schemaName := schemaNameFromUrl(connUrl)
+	if schemaName != "" {
+		// use search_path for backwards compatibility to postgres 8ish
+		if _, err := db.Exec("SET search_path TO '$1';", schemaName); err != nil {
+			return err
+		}
+	}
+
 	driver.db = db
 
 	if err := driver.ensureVersionTableExists(); err != nil {
@@ -120,6 +130,21 @@ func (driver *Driver) Version() (uint64, error) {
 	default:
 		return version, nil
 	}
+}
+
+func schemaNameFromUrl(connUrl string) string {
+	u, err := url.Parse(connUrl)
+	if err != nil {
+		// url should have been validated when opening connection
+		// if it fails here were are in serious trouble
+		panic(err)
+	}
+	q, err := url.ParseQuery(u.RawQuery)
+	if err != nil {
+		return ""
+	}
+
+	return q["schema"][0]
 }
 
 func init() {
