@@ -1,7 +1,7 @@
 package file
 
 import (
-	"github.com/mattes/migrate/migrate/direction"
+	"code.impractical.co/migrate/migrate/direction"
 	"io/ioutil"
 	"os"
 	"path"
