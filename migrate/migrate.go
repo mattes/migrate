@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fedyakin/migrate/driver"
-	"github.com/fedyakin/migrate/file"
-	"github.com/fedyakin/migrate/migrate/direction"
-	pipep "github.com/fedyakin/migrate/pipe"
+	"github.com/turbine/migrate/driver"
+	"github.com/turbine/migrate/file"
+	"github.com/turbine/migrate/migrate/direction"
+	pipep "github.com/turbine/migrate/pipe"
 )
 
 // Up applies all available migrations

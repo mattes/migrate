@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/fedyakin/migrate/file"
-	"github.com/fedyakin/migrate/migrate/direction"
 	"github.com/lib/pq"
+	"github.com/turbine/migrate/file"
+	"github.com/turbine/migrate/migrate/direction"
 )
 
 type PerFileTxnDriver struct {

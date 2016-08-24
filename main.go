@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/fedyakin/migrate/driver"
-	"github.com/fedyakin/migrate/file"
-	"github.com/fedyakin/migrate/migrate"
-	"github.com/fedyakin/migrate/migrate/direction"
-	pipep "github.com/fedyakin/migrate/pipe"
+	"github.com/turbine/migrate/driver"
+	"github.com/turbine/migrate/file"
+	"github.com/turbine/migrate/migrate"
+	"github.com/turbine/migrate/migrate/direction"
+	pipep "github.com/turbine/migrate/pipe"
 )
 
 var url = flag.String("url", "", "")

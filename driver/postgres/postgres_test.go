@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/fedyakin/migrate/file"
-	"github.com/fedyakin/migrate/migrate/direction"
-	pipep "github.com/fedyakin/migrate/pipe"
+	"github.com/turbine/migrate/file"
+	"github.com/turbine/migrate/migrate/direction"
+	pipep "github.com/turbine/migrate/pipe"
 )
 
 // TestMigrate runs some additional tests on Migrate().

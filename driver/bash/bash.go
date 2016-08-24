@@ -2,8 +2,8 @@
 package bash
 
 import (
-	"github.com/fedyakin/migrate/file"
-	_ "github.com/fedyakin/migrate/migrate/direction"
+	"github.com/turbine/migrate/file"
+	_ "github.com/turbine/migrate/migrate/direction"
 )
 
 type Driver struct {

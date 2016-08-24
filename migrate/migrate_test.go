@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/fedyakin/migrate/driver"
+	"github.com/turbine/migrate/driver"
 )
 
 // Add Driver URLs here to test basic Up, Down, .. functions.
