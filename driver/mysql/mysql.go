@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fedyakin/migrate/file"
-	"github.com/fedyakin/migrate/migrate/direction"
 	"github.com/go-sql-driver/mysql"
+	"github.com/turbine/migrate/file"
+	"github.com/turbine/migrate/migrate/direction"
 )
 
 type Driver struct {
