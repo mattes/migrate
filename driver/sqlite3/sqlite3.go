@@ -15,6 +15,8 @@ import (
 
 type Driver struct {
 	db *sql.DB
+	// Set by InitializeFromDB
+	ignoreClose bool
 }
 
 const tableName = "schema_migration"
@@ -40,7 +42,26 @@ func (driver *Driver) Initialize(url string) error {
 	return nil
 }
 
+// Meant to be used with :memory: database type. When we initialize
+// with this method, calls to Close() will be ignored so that the
+// database connection can be re-used with the migrations applied
+func (driver *Driver) InitializeFromDB(db *sql.DB) error {
+	if err := db.Ping(); err != nil {
+		return err
+	}
+	driver.db = db
+	driver.ignoreClose = true
+
+	if err := driver.ensureVersionTableExists(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (driver *Driver) Close() error {
+	if driver.ignoreClose {
+		return nil
+	}
 	if err := driver.db.Close(); err != nil {
 		return err
 	}

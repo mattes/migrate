@@ -19,7 +19,16 @@ import (
 
 // Up applies all available migrations
 func Up(pipe chan interface{}, url, migrationsPath string) {
-	d, files, version, err := initDriverAndReadMigrationFilesAndGetVersion(url, migrationsPath)
+	d, err := driver.New(url)
+	if err != nil {
+		go pipep.Close(pipe, err)
+		return
+	}
+	UpWithDriver(pipe, d, migrationsPath)
+}
+
+func UpWithDriver(pipe chan interface{}, d driver.Driver, migrationsPath string) {
+	files, version, err := readMigrationFilesAndGetVersion(d, migrationsPath)
 	if err != nil {
 		go pipep.Close(pipe, err)
 		return
@@ -58,15 +67,33 @@ func Up(pipe chan interface{}, url, migrationsPath string) {
 
 // UpSync is synchronous version of Up
 func UpSync(url, migrationsPath string) (err []error, ok bool) {
+	d, e := driver.New(url)
+	if err != nil {
+		err = append(err, e)
+		return err, false
+	}
+	return UpSyncWithDriver(d, migrationsPath)
+}
+
+func UpSyncWithDriver(d driver.Driver, migrationsPath string) (err []error, ok bool) {
 	pipe := pipep.New()
-	go Up(pipe, url, migrationsPath)
+	go UpWithDriver(pipe, d, migrationsPath)
 	err = pipep.ReadErrors(pipe)
 	return err, len(err) == 0
 }
 
 // Down rolls back all migrations
 func Down(pipe chan interface{}, url, migrationsPath string) {
-	d, files, version, err := initDriverAndReadMigrationFilesAndGetVersion(url, migrationsPath)
+	d, err := driver.New(url)
+	if err != nil {
+		go pipep.Close(pipe, err)
+		return
+	}
+	DownWithDriver(pipe, d, migrationsPath)
+}
+
+func DownWithDriver(pipe chan interface{}, d driver.Driver, migrationsPath string) {
+	files, version, err := readMigrationFilesAndGetVersion(d, migrationsPath)
 	if err != nil {
 		go pipep.Close(pipe, err)
 		return
@@ -105,8 +132,17 @@ func Down(pipe chan interface{}, url, migrationsPath string) {
 
 // DownSync is synchronous version of Down
 func DownSync(url, migrationsPath string) (err []error, ok bool) {
+	d, e := driver.New(url)
+	if err != nil {
+		err = append(err, e)
+		return err, false
+	}
+	return DownSyncWithDriver(d, migrationsPath)
+}
+
+func DownSyncWithDriver(d driver.Driver, migrationsPath string) (err []error, ok bool) {
 	pipe := pipep.New()
-	go Down(pipe, url, migrationsPath)
+	go DownWithDriver(pipe, d, migrationsPath)
 	err = pipep.ReadErrors(pipe)
 	return err, len(err) == 0
 }
@@ -151,9 +187,18 @@ func ResetSync(url, migrationsPath string) (err []error, ok bool) {
 	return err, len(err) == 0
 }
 
-// Migrate applies relative +n/-n migrations
 func Migrate(pipe chan interface{}, url, migrationsPath string, relativeN int) {
-	d, files, version, err := initDriverAndReadMigrationFilesAndGetVersion(url, migrationsPath)
+	d, err := driver.New(url)
+	if err != nil {
+		go pipep.Close(pipe, err)
+		return
+	}
+	MigrateWithDriver(pipe, d, migrationsPath, relativeN)
+}
+
+// Migrate applies relative +n/-n migrations
+func MigrateWithDriver(pipe chan interface{}, d driver.Driver, migrationsPath string, relativeN int) {
+	files, version, err := readMigrationFilesAndGetVersion(d, migrationsPath)
 	if err != nil {
 		go pipep.Close(pipe, err)
 		return
@@ -261,24 +306,20 @@ func Create(url, migrationsPath, name string) (*file.MigrationFile, error) {
 	return mfile, nil
 }
 
-// initDriverAndReadMigrationFilesAndGetVersion is a small helper
+// readMigrationFilesAndGetVersion is a small helper
 // function that is common to most of the migration funcs
-func initDriverAndReadMigrationFilesAndGetVersion(url, migrationsPath string) (driver.Driver, *file.MigrationFiles, uint64, error) {
-	d, err := driver.New(url)
-	if err != nil {
-		return nil, nil, 0, err
-	}
+func readMigrationFilesAndGetVersion(d driver.Driver, migrationsPath string) (*file.MigrationFiles, uint64, error) {
 	files, err := file.ReadMigrationFiles(migrationsPath, file.FilenameRegex(d.FilenameExtension()))
 	if err != nil {
 		d.Close() // TODO what happens with errors from this func?
-		return nil, nil, 0, err
+		return nil, 0, err
 	}
 	version, err := d.Version()
 	if err != nil {
 		d.Close() // TODO what happens with errors from this func?
-		return nil, nil, 0, err
+		return nil, 0, err
 	}
-	return d, &files, version, nil
+	return &files, version, nil
 }
 
 // NewPipe is a convenience function for pipe.New().
