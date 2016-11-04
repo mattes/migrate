@@ -74,7 +74,8 @@ func TestFiles(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpdir)
 
-	if err := ioutil.WriteFile(path.Join(tmpdir, "nonsense.txt"), nil, 0755); err != nil {
+	nonsensePath := path.Join(tmpdir, "nonsense.txt")
+	if err := ioutil.WriteFile(nonsensePath, nil, 0755); err != nil {
 		t.Fatal("Unable to write files in tmpdir", err)
 	}
 	ioutil.WriteFile(path.Join(tmpdir, "002_migrationfile.up.sql"), nil, 0755)
@@ -91,6 +92,15 @@ func TestFiles(t *testing.T) {
 	ioutil.WriteFile(path.Join(tmpdir, "301_migrationfile.up.sql"), nil, 0755)
 
 	ioutil.WriteFile(path.Join(tmpdir, "401_migrationfile.down.sql"), []byte("test"), 0755)
+
+	_, err = ReadMigrationFiles(tmpdir, FilenameRegex("sql"))
+	if err == nil {
+		t.Fatal("Presence of file with nonconforming name should cause an error.")
+	}
+	err = os.Remove(nonsensePath)
+	if err != nil {
+		t.Fatal("Unable to remove file from tmpdir", err)
+	}
 
 	files, err := ReadMigrationFiles(tmpdir, FilenameRegex("sql"))
 	if err != nil {
