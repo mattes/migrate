@@ -10,6 +10,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/mattes/migrate/driver"
 	"github.com/mattes/migrate/file"
@@ -19,18 +20,22 @@ import (
 
 // Up applies all available migrations
 func Up(pipe chan interface{}, url, migrationsPath string) {
-	d, files, version, err := initDriverAndReadMigrationFilesAndGetVersion(url, migrationsPath)
-	if err != nil {
-		go pipep.Close(pipe, err)
-		return
-	}
+	d, files, versions, err := initDriverAndReadMigrationFilesAndGetVersions(url, migrationsPath)
+	defer func() {
+		if err != nil {
+			pipe <- err
 
-	applyMigrationFiles, err := files.ToLastFrom(version)
-	if err != nil {
-		if err2 := d.Close(); err2 != nil {
-			pipe <- err2
 		}
-		go pipep.Close(pipe, err)
+		if d != nil {
+			if err = d.Close(); err != nil {
+				pipe <- err
+			}
+		}
+		go pipep.Close(pipe, nil)
+	}()
+
+	applyMigrationFiles, err := files.Pending(versions)
+	if err != nil {
 		return
 	}
 
@@ -45,17 +50,6 @@ func Up(pipe chan interface{}, url, migrationsPath string) {
 				break
 			}
 		}
-		if err := d.Close(); err != nil {
-			pipe <- err
-		}
-		go pipep.Close(pipe, nil)
-		return
-	} else {
-		if err := d.Close(); err != nil {
-			pipe <- err
-		}
-		go pipep.Close(pipe, nil)
-		return
 	}
 }
 
@@ -69,18 +63,25 @@ func UpSync(url, migrationsPath string) (err []error, ok bool) {
 
 // Down rolls back all migrations
 func Down(pipe chan interface{}, url, migrationsPath string) {
-	d, files, version, err := initDriverAndReadMigrationFilesAndGetVersion(url, migrationsPath)
+	d, files, versions, err := initDriverAndReadMigrationFilesAndGetVersions(url, migrationsPath)
+	defer func() {
+		if err != nil {
+			pipe <- err
+
+		}
+		if d != nil {
+			if err = d.Close(); err != nil {
+				pipe <- err
+			}
+		}
+		go pipep.Close(pipe, nil)
+	}()
 	if err != nil {
-		go pipep.Close(pipe, err)
 		return
 	}
 
-	applyMigrationFiles, err := files.ToFirstFrom(version)
+	applyMigrationFiles, err := files.Applied(versions)
 	if err != nil {
-		if err2 := d.Close(); err2 != nil {
-			pipe <- err2
-		}
-		go pipep.Close(pipe, err)
 		return
 	}
 
@@ -95,17 +96,6 @@ func Down(pipe chan interface{}, url, migrationsPath string) {
 				break
 			}
 		}
-		if err2 := d.Close(); err2 != nil {
-			pipe <- err2
-		}
-		go pipep.Close(pipe, nil)
-		return
-	} else {
-		if err2 := d.Close(); err2 != nil {
-			pipe <- err2
-		}
-		go pipep.Close(pipe, nil)
-		return
 	}
 }
 
@@ -128,9 +118,8 @@ func Redo(pipe chan interface{}, url, migrationsPath string) {
 	if ok := pipep.WaitAndRedirect(pipe1, pipe, signals); !ok {
 		go pipep.Close(pipe, nil)
 		return
-	} else {
-		go Migrate(pipe, url, migrationsPath, +1)
 	}
+	go Migrate(pipe, url, migrationsPath, +1)
 }
 
 // RedoSync is synchronous version of Redo
@@ -152,9 +141,8 @@ func Reset(pipe chan interface{}, url, migrationsPath string) {
 	if ok := pipep.WaitAndRedirect(pipe1, pipe, signals); !ok {
 		go pipep.Close(pipe, nil)
 		return
-	} else {
-		go Up(pipe, url, migrationsPath)
 	}
+	go Up(pipe, url, migrationsPath)
 }
 
 // ResetSync is synchronous version of Reset
@@ -167,18 +155,24 @@ func ResetSync(url, migrationsPath string) (err []error, ok bool) {
 
 // Migrate applies relative +n/-n migrations
 func Migrate(pipe chan interface{}, url, migrationsPath string, relativeN int) {
-	d, files, version, err := initDriverAndReadMigrationFilesAndGetVersion(url, migrationsPath)
+	d, files, versions, err := initDriverAndReadMigrationFilesAndGetVersions(url, migrationsPath)
+	defer func() {
+		if err != nil {
+			pipe <- err
+		}
+		if d != nil {
+			if err = d.Close(); err != nil {
+				pipe <- err
+			}
+		}
+		go pipep.Close(pipe, nil)
+	}()
 	if err != nil {
-		go pipep.Close(pipe, err)
 		return
 	}
 
-	applyMigrationFiles, err := files.From(version, relativeN)
+	applyMigrationFiles, err := files.Relative(relativeN, versions)
 	if err != nil {
-		if err2 := d.Close(); err2 != nil {
-			pipe <- err2
-		}
-		go pipep.Close(pipe, err)
 		return
 	}
 
@@ -193,17 +187,7 @@ func Migrate(pipe chan interface{}, url, migrationsPath string, relativeN int) {
 				break
 			}
 		}
-		if err2 := d.Close(); err2 != nil {
-			pipe <- err2
-		}
-		go pipep.Close(pipe, nil)
-		return
 	}
-	if err2 := d.Close(); err2 != nil {
-		pipe <- err2
-	}
-	go pipep.Close(pipe, nil)
-	return
 }
 
 // MigrateSync is synchronous version of Migrate
@@ -215,7 +199,7 @@ func MigrateSync(url, migrationsPath string, relativeN int) (err []error, ok boo
 }
 
 // Version returns the current migration version
-func Version(url, migrationsPath string) (version uint64, err error) {
+func Version(url, migrationsPath string) (version file.Version, err error) {
 	d, err := driver.New(url)
 	if err != nil {
 		return 0, err
@@ -223,45 +207,49 @@ func Version(url, migrationsPath string) (version uint64, err error) {
 	return d.Version()
 }
 
-// Create creates new migration files on disk
-func Create(url, migrationsPath, name string) (*file.MigrationFile, error) {
+// Version returns applied versions
+func Versions(url, migrationsPath string) (versions file.Versions, err error) {
 	d, err := driver.New(url)
 	if err != nil {
-		return nil, err
+		return file.Versions{}, err
 	}
-	files, err := file.ReadMigrationFiles(migrationsPath, file.FilenameRegex(d.FilenameExtension()))
+	return d.Versions()
+}
+
+// Create creates new migration files on disk
+func Create(url, migrationsPath, name string) (*file.MigrationFile, error) {
+	d, files, _, err := initDriverAndReadMigrationFilesAndGetVersions(url, migrationsPath)
 	if err != nil {
 		return nil, err
 	}
 
-	version := uint64(0)
-	if len(files) > 0 {
-		lastFile := files[len(files)-1]
-		version = lastFile.Version
-	}
-	version += 1
-	versionStr := strconv.FormatUint(version, 10)
+	versionStr := time.Now().UTC().Format("20060102150405")
+	v, _ := strconv.ParseUint(versionStr, 10, 64)
+	version := file.Version(v)
 
-	length := 4 // TODO(mattes) check existing files and try to guess length
-	if len(versionStr)%length != 0 {
-		versionStr = strings.Repeat("0", length-len(versionStr)%length) + versionStr
-	}
-
-	filenamef := "%s_%s.%s.%s"
+	filenamef := "%d_%s.%s.%s"
 	name = strings.Replace(name, " ", "_", -1)
+
+	// if latest version has the same timestamp, increment version
+	if len(files) > 0 {
+		latest := files[len(files)-1].Version
+		if latest >= version {
+			version = latest + 1
+		}
+	}
 
 	mfile := &file.MigrationFile{
 		Version: version,
 		UpFile: &file.File{
 			Path:      migrationsPath,
-			FileName:  fmt.Sprintf(filenamef, versionStr, name, "up", d.FilenameExtension()),
+			FileName:  fmt.Sprintf(filenamef, version, name, "up", d.FilenameExtension()),
 			Name:      name,
 			Content:   []byte(""),
 			Direction: direction.Up,
 		},
 		DownFile: &file.File{
 			Path:      migrationsPath,
-			FileName:  fmt.Sprintf(filenamef, versionStr, name, "down", d.FilenameExtension()),
+			FileName:  fmt.Sprintf(filenamef, version, name, "down", d.FilenameExtension()),
 			Name:      name,
 			Content:   []byte(""),
 			Direction: direction.Down,
@@ -278,24 +266,27 @@ func Create(url, migrationsPath, name string) (*file.MigrationFile, error) {
 	return mfile, nil
 }
 
-// initDriverAndReadMigrationFilesAndGetVersion is a small helper
+// initDriverAndReadMigrationFilesAndGetVersionsAndGetVersion is a small helper
 // function that is common to most of the migration funcs
-func initDriverAndReadMigrationFilesAndGetVersion(url, migrationsPath string) (driver.Driver, *file.MigrationFiles, uint64, error) {
+func initDriverAndReadMigrationFilesAndGetVersions(url, migrationsPath string) (driver.Driver, file.MigrationFiles, file.Versions, error) {
 	d, err := driver.New(url)
 	if err != nil {
-		return nil, nil, 0, err
+		return nil, nil, file.Versions{}, err
 	}
 	files, err := file.ReadMigrationFiles(migrationsPath, file.FilenameRegex(d.FilenameExtension()))
 	if err != nil {
 		d.Close() // TODO what happens with errors from this func?
-		return nil, nil, 0, err
+		return nil, nil, file.Versions{}, err
 	}
-	version, err := d.Version()
+
+	versions, err := d.Versions()
 	if err != nil {
 		d.Close() // TODO what happens with errors from this func?
-		return nil, nil, 0, err
+		return nil, nil, file.Versions{}, err
+
 	}
-	return d, &files, version, nil
+
+	return d, files, versions, nil
 }
 
 // NewPipe is a convenience function for pipe.New().

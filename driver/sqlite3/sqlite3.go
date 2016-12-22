@@ -113,8 +113,8 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 	}
 }
 
-func (driver *Driver) Version() (uint64, error) {
-	var version uint64
+func (driver *Driver) Version() (file.Version, error) {
+	var version file.Version
 	err := driver.db.QueryRow("SELECT version FROM " + tableName + " ORDER BY version DESC LIMIT 1").Scan(&version)
 	switch {
 	case err == sql.ErrNoRows:
@@ -124,6 +124,26 @@ func (driver *Driver) Version() (uint64, error) {
 	default:
 		return version, nil
 	}
+}
+
+func (driver *Driver) Versions() (file.Versions, error) {
+	versions := file.Versions{}
+
+	rows, err := driver.db.Query("SELECT version FROM " + tableName + " ORDER BY version DESC")
+	if err != nil {
+		return versions, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var version file.Version
+		err := rows.Scan(&version)
+		if err != nil {
+			return versions, err
+		}
+		versions = append(versions, version)
+	}
+	err = rows.Err()
+	return versions, err
 }
 
 func init() {
