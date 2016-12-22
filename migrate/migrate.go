@@ -8,9 +8,9 @@ import (
 	"os"
 	"os/signal"
 	"path"
-	"strconv"
 	"strings"
 
+	"github.com/jmhodges/clock"
 	"github.com/mattes/migrate/driver"
 	"github.com/mattes/migrate/file"
 	"github.com/mattes/migrate/migrate/direction"
@@ -234,17 +234,14 @@ func Create(url, migrationsPath, name string) (*file.MigrationFile, error) {
 		return nil, err
 	}
 
-	version := uint64(0)
-	if len(files) > 0 {
-		lastFile := files[len(files)-1]
-		version = lastFile.Version
-	}
-	version += 1
-	versionStr := strconv.FormatUint(version, 10)
+	t := globalClock.Now()
+	version := uint64(t.Unix())
+	versionStr := t.Format("20060102150405")
 
-	length := 4 // TODO(mattes) check existing files and try to guess length
-	if len(versionStr)%length != 0 {
-		versionStr = strings.Repeat("0", length-len(versionStr)%length) + versionStr
+	for _, f := range files {
+		if f.Version == version {
+			return nil, fmt.Errorf("something is possibly wrong with your or another person's clock: found a duplicate migration version for %d", version)
+		}
 	}
 
 	filenamef := "%s_%s.%s.%s"
@@ -332,3 +329,7 @@ func handleInterrupts() chan os.Signal {
 	}
 	return nil
 }
+
+// Just to be overriden in tests. Setting a global isn't ideal for making it
+// available to tests, but we're constrained by our API.
+var globalClock = clock.New()

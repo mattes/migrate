@@ -66,7 +66,7 @@ func TestMigrate(t *testing.T) {
 		},
 		{
 			Path:      "/foobar",
-			FileName:  "002_foobar.down.sql",
+			FileName:  "001_foobar.down.sql",
 			Version:   1,
 			Name:      "foobar",
 			Direction: direction.Down,
@@ -76,8 +76,18 @@ func TestMigrate(t *testing.T) {
 		},
 		{
 			Path:      "/foobar",
-			FileName:  "002_foobar.up.sql",
-			Version:   2,
+			FileName:  "20060102150405_bigint.up.sql",
+			Version:   20060102150405,
+			Name:      "bigint",
+			Direction: direction.Up,
+			Content: []byte(`
+               ALTER TABLE yolo ADD okay text;
+            `),
+		},
+		{
+			Path:      "/foobar",
+			FileName:  "20070000000000_foobar.up.sql",
+			Version:   20000000000000,
 			Name:      "foobar",
 			Direction: direction.Up,
 			Content: []byte(`

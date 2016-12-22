@@ -4,8 +4,10 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 	// Ensure imports for each driver we wish to test
 
+	"github.com/jmhodges/clock"
 	_ "github.com/mattes/migrate/driver/postgres"
 	_ "github.com/mattes/migrate/driver/sqlite3"
 )
@@ -16,16 +18,24 @@ var driverUrls = []string{
 }
 
 func TestCreate(t *testing.T) {
+	clk := clock.NewFake()
+	globalClock = clk
+	defer func() {
+		globalClock = clock.New()
+	}()
 	for _, driverUrl := range driverUrls {
+		clk.Set(time.Unix(0, 0))
 		t.Logf("Test driver: %s", driverUrl)
 		tmpdir, err := ioutil.TempDir("/tmp", "migrate-test")
 		if err != nil {
 			t.Fatal(err)
 		}
 
+		clk.Add(1 * time.Second)
 		if _, err := Create(driverUrl, tmpdir, "test_migration"); err != nil {
 			t.Fatal(err)
 		}
+		clk.Add(1 * time.Second)
 		if _, err := Create(driverUrl, tmpdir, "another migration"); err != nil {
 			t.Fatal(err)
 		}
@@ -35,11 +45,13 @@ func TestCreate(t *testing.T) {
 			t.Fatal(err)
 		}
 		if len(files) != 4 {
-			t.Fatal("Expected 2 new files, got", len(files))
+			t.Fatal("Expected 4 new files, got", len(files))
 		}
 		expectFiles := []string{
-			"0001_test_migration.up.sql", "0001_test_migration.down.sql",
-			"0002_another_migration.up.sql", "0002_another_migration.down.sql",
+			"19700101000001_test_migration.up.sql",
+			"19700101000001_test_migration.down.sql",
+			"19700101000002_another_migration.up.sql",
+			"19700101000002_another_migration.down.sql",
 		}
 		foundCounter := 0
 		for _, expectFile := range expectFiles {
@@ -57,14 +69,22 @@ func TestCreate(t *testing.T) {
 }
 
 func TestReset(t *testing.T) {
+	clk := clock.NewFake()
+	globalClock = clk
+	defer func() {
+		globalClock = clock.New()
+	}()
 	for _, driverUrl := range driverUrls {
+		clk.Set(time.Unix(0, 0))
 		t.Logf("Test driver: %s", driverUrl)
 		tmpdir, err := ioutil.TempDir("/", "migrate-test")
 		if err != nil {
 			t.Fatal(err)
 		}
 
+		clk.Add(1 * time.Second)
 		Create(driverUrl, tmpdir, "migration1")
+		clk.Add(1 * time.Second)
 		Create(driverUrl, tmpdir, "migration2")
 
 		errs, ok := ResetSync(driverUrl, tmpdir)
@@ -75,13 +95,18 @@ func TestReset(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if version != 2 {
-			t.Fatalf("Expected version 2, got %v", version)
+		if version != 19700101000002 {
+			t.Fatalf("Expected version 19700101000002, got %v", version)
 		}
 	}
 }
 
 func TestDown(t *testing.T) {
+	clk := clock.NewFake()
+	globalClock = clk
+	defer func() {
+		globalClock = clock.New()
+	}()
 	for _, driverUrl := range driverUrls {
 		t.Logf("Test driver: %s", driverUrl)
 		tmpdir, err := ioutil.TempDir("/tmp", "migrate-test")
@@ -89,7 +114,9 @@ func TestDown(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		clk.Add(1 * time.Second)
 		Create(driverUrl, tmpdir, "migration1")
+		clk.Add(1 * time.Second)
 		Create(driverUrl, tmpdir, "migration2")
 
 		errs, ok := ResetSync(driverUrl, tmpdir)
@@ -100,8 +127,8 @@ func TestDown(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if version != 2 {
-			t.Fatalf("Expected version 2, got %v", version)
+		if version != 19700101000002 {
+			t.Fatalf("Expected version 19700101000002, got %v", version)
 		}
 
 		errs, ok = DownSync(driverUrl, tmpdir)
@@ -119,14 +146,22 @@ func TestDown(t *testing.T) {
 }
 
 func TestUp(t *testing.T) {
+	clk := clock.NewFake()
+	globalClock = clk
+	defer func() {
+		globalClock = clock.New()
+	}()
 	for _, driverUrl := range driverUrls {
+		clk.Set(time.Unix(0, 0))
 		t.Logf("Test driver: %s", driverUrl)
 		tmpdir, err := ioutil.TempDir("/tmp", "migrate-test")
 		if err != nil {
 			t.Fatal(err)
 		}
 
+		clk.Add(1 * time.Second)
 		Create(driverUrl, tmpdir, "migration1")
+		clk.Add(1 * time.Second)
 		Create(driverUrl, tmpdir, "migration2")
 
 		errs, ok := DownSync(driverUrl, tmpdir)
@@ -149,21 +184,29 @@ func TestUp(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if version != 2 {
-			t.Fatalf("Expected version 2, got %v", version)
+		if version != 19700101000002 {
+			t.Fatalf("Expected version 19700101000002, got %v", version)
 		}
 	}
 }
 
 func TestRedo(t *testing.T) {
+	clk := clock.NewFake()
+	globalClock = clk
+	defer func() {
+		globalClock = clock.New()
+	}()
 	for _, driverUrl := range driverUrls {
+		clk.Set(time.Unix(0, 0))
 		t.Logf("Test driver: %s", driverUrl)
 		tmpdir, err := ioutil.TempDir("/tmp", "migrate-test")
 		if err != nil {
 			t.Fatal(err)
 		}
 
+		clk.Add(1 * time.Second)
 		Create(driverUrl, tmpdir, "migration1")
+		clk.Add(1 * time.Second)
 		Create(driverUrl, tmpdir, "migration2")
 
 		errs, ok := ResetSync(driverUrl, tmpdir)
@@ -174,8 +217,8 @@ func TestRedo(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if version != 2 {
-			t.Fatalf("Expected version 2, got %v", version)
+		if version != 19700101000002 {
+			t.Fatalf("Expected version 19700101000002, got %v", version)
 		}
 
 		errs, ok = RedoSync(driverUrl, tmpdir)
@@ -186,21 +229,29 @@ func TestRedo(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if version != 2 {
-			t.Fatalf("Expected version 2, got %v", version)
+		if version != 19700101000002 {
+			t.Fatalf("Expected version 19700101000002, got %v", version)
 		}
 	}
 }
 
 func TestMigrate(t *testing.T) {
+	clk := clock.NewFake()
+	globalClock = clk
+	defer func() {
+		globalClock = clock.New()
+	}()
 	for _, driverUrl := range driverUrls {
+		clk.Set(time.Unix(0, 0))
 		t.Logf("Test driver: %s", driverUrl)
 		tmpdir, err := ioutil.TempDir("/tmp", "migrate-test")
 		if err != nil {
 			t.Fatal(err)
 		}
 
+		clk.Add(1 * time.Second)
 		Create(driverUrl, tmpdir, "migration1")
+		clk.Add(1 * time.Second)
 		Create(driverUrl, tmpdir, "migration2")
 
 		errs, ok := ResetSync(driverUrl, tmpdir)
@@ -211,8 +262,8 @@ func TestMigrate(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if version != 2 {
-			t.Fatalf("Expected version 2, got %v", version)
+		if version != 19700101000002 {
+			t.Fatalf("Expected version 19700101000002, got %v", version)
 		}
 
 		errs, ok = MigrateSync(driverUrl, tmpdir, -2)
@@ -235,8 +286,8 @@ func TestMigrate(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if version != 1 {
-			t.Fatalf("Expected version 1, got %v", version)
+		if version != 19700101000001 {
+			t.Fatalf("Expected version 19700101000001, got %v", version)
 		}
 	}
 }
