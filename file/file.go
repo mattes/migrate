@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/mattes/migrate/migrate/direction"
+	"github.com/codeship/migrate/migrate/direction"
 	"go/token"
 	"io/ioutil"
 	"path"
@@ -43,6 +43,9 @@ type File struct {
 
 	// UP or DOWN migration
 	Direction direction.Direction
+
+	// Use transaction
+  UseTransactions bool
 }
 
 // Files is a slice of Files
@@ -67,6 +70,11 @@ type MigrationFiles []MigrationFile
 func (f *File) ReadContent() error {
 	if len(f.Content) == 0 {
 		content, err := ioutil.ReadFile(path.Join(f.Path, f.FileName))
+
+		r := bytes.NewBuffer(content)
+ 		line, err := r.ReadString('\n')
+ 		f.UseTransactions = !strings.Contains(line, "-- @NoTransactions")
+
 		if err != nil {
 			return err
 		}

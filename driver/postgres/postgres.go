@@ -8,9 +8,9 @@ import (
 	"strconv"
 
 	"github.com/lib/pq"
-	"github.com/mattes/migrate/driver"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
+	"github.com/codeship/migrate/driver"
+	"github.com/codeship/migrate/file"
+	"github.com/codeship/migrate/migrate/direction"
 )
 
 type Driver struct {
@@ -86,7 +86,13 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 		return
 	}
 
-	if _, err := tx.Exec(string(f.Content)); err != nil {
+	if f.UseTransactions == false {
+ 		_, err = driver.db.Query(string(f.Content))
+ 	} else {
+ 		_, err = tx.Exec(string(f.Content))
+ 	}
+
+ 	if err != nil {
 		pqErr := err.(*pq.Error)
 		offset, err := strconv.Atoi(pqErr.Position)
 		if err == nil && offset >= 0 {
