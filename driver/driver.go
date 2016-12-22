@@ -5,11 +5,12 @@ import (
 	"fmt"
 	neturl "net/url" // alias to allow `url string` func signature in New
 
-	"github.com/mattes/migrate/file"
+	"code.impractical.co/migrate/file"
 )
 
 // Driver is the interface type that needs to implemented by all drivers.
 type Driver interface {
+	New() Driver
 
 	// Initialize is the first function to be called.
 	// Check the url string and open and verify any connection
@@ -46,6 +47,7 @@ func New(url string) (Driver, error) {
 		return nil, fmt.Errorf("Driver '%s' not found.", u.Scheme)
 	}
 	verifyFilenameExtension(u.Scheme, d)
+	d = d.New()
 	if err := d.Initialize(url); err != nil {
 		return nil, err
 	}

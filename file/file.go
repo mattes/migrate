@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/mattes/migrate/migrate/direction"
+	"code.impractical.co/migrate/migrate/direction"
 	"go/token"
 	"io/ioutil"
 	"path"

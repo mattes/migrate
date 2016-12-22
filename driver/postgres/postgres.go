@@ -8,9 +8,9 @@ import (
 	"strconv"
 
 	"github.com/lib/pq"
-	"github.com/mattes/migrate/driver"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
+	"code.impractical.co/migrate/driver"
+	"code.impractical.co/migrate/file"
+	"code.impractical.co/migrate/migrate/direction"
 )
 
 type Driver struct {
@@ -18,6 +18,10 @@ type Driver struct {
 }
 
 const tableName = "schema_migrations"
+
+func (driver *Driver) New() driver.Driver {
+	return &Driver{}
+}
 
 func (driver *Driver) Initialize(url string) error {
 	db, err := sql.Open("postgres", url)
