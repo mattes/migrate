@@ -79,6 +79,15 @@ func (driver *Driver) Initialize(url string) error {
 	}
 	session.SetMode(mgo.Monotonic, true)
 
+	c := session.DB(driver.methodsReceiver.DbName()).C(MIGRATE_C)
+	err = c.EnsureIndex(mgo.Index{
+		Key:    []string{"version"},
+		Unique: true,
+	})
+	if err != nil {
+		return err
+	}
+
 	driver.Session = session
 	driver.migrator = gomethods.Migrator{MethodInvoker: driver}
 
