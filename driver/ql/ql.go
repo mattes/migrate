@@ -3,13 +3,13 @@ package ql
 import (
 	"database/sql"
 
-	"github.com/mattes/migrate/file"
 	"github.com/mattes/migrate/driver"
+	"github.com/mattes/migrate/file"
 	"github.com/mattes/migrate/migrate/direction"
 
+	"fmt"
 	_ "github.com/cznic/ql/driver"
 	"strings"
-	"fmt"
 )
 
 const tableName = "schema_migration"
