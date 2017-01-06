@@ -13,13 +13,13 @@ import (
 type WrongMethodSignatureError string
 
 func (e WrongMethodSignatureError) Error() string {
-	return fmt.Sprintf("Migrate method '%s' has a wrong signature", string(e))
+	return fmt.Sprintf("Method '%s' has wrong signature", string(e))
 }
 
 type MethodNotFoundError string
 
 func (e MethodNotFoundError) Error() string {
-	return fmt.Sprintf("Migrate method '%s' was not found. It is either non existing or has not been exported (starts with lowercase).", string(e))
+	return fmt.Sprintf("Method '%s' was not found. It is either non-existing or has not been exported (starts with lowercase).", string(e))
 }
 
 type MethodInvocationFailedError struct {

@@ -253,8 +253,7 @@ func TestMigrate(t *testing.T) {
 				Organizations:    []Organization{},
 				Organizations_v2: []Organization_v2{},
 				Users:            []User{},
-				//Errors:           []error{gomethods.MethodNotExportedError("v001_not_exported_method_up")},
-				Errors: []error{gomethods.MethodNotFoundError("v001_not_exported_method_up")},
+				Errors:           []error{gomethods.MethodNotFoundError("v001_not_exported_method_up")},
 			},
 		},
 		{
