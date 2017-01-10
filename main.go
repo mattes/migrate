@@ -5,11 +5,9 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/fatih/color"
 	_ "github.com/mattes/migrate/driver/bash"
@@ -139,11 +137,9 @@ func Migrate() {
 		log.Fatalf("%q is not a valid number of migrations.", Args[0])
 	}
 
-	start := time.Now()
 	pipe := pipep.New()
 	go migrate.Migrate(pipe, DatabaseURL, MigrationsPath, relative)
 	ok := writePipe(pipe)
-	printTimer(start)
 
 	if !ok {
 		os.Exit(1)
@@ -166,11 +162,9 @@ func Goto() {
 
 	relative := target - int(current)
 
-	start := time.Now()
 	pipe := pipep.New()
 	go migrate.Migrate(pipe, DatabaseURL, MigrationsPath, relative)
 	ok := writePipe(pipe)
-	printTimer(start)
 
 	if !ok {
 		os.Exit(1)
@@ -181,11 +175,9 @@ func Goto() {
 func Up() {
 	verifyMigrationsPath()
 
-	start := time.Now()
 	pipe := pipep.New()
 	go migrate.Up(pipe, DatabaseURL, MigrationsPath)
 	ok := writePipe(pipe)
-	printTimer(start)
 
 	if !ok {
 		os.Exit(1)
@@ -196,11 +188,9 @@ func Up() {
 func Down() {
 	verifyMigrationsPath()
 
-	start := time.Now()
 	pipe := pipep.New()
 	go migrate.Down(pipe, DatabaseURL, MigrationsPath)
 	ok := writePipe(pipe)
-	printTimer(start)
 
 	if !ok {
 		os.Exit(1)
@@ -211,11 +201,9 @@ func Down() {
 func Redo() {
 	verifyMigrationsPath()
 
-	start := time.Now()
 	pipe := pipep.New()
 	go migrate.Redo(pipe, DatabaseURL, MigrationsPath)
 	ok := writePipe(pipe)
-	printTimer(start)
 
 	if !ok {
 		os.Exit(1)
@@ -226,11 +214,9 @@ func Redo() {
 func Reset() {
 	verifyMigrationsPath()
 
-	start := time.Now()
 	pipe := pipep.New()
 	go migrate.Reset(pipe, DatabaseURL, MigrationsPath)
 	ok := writePipe(pipe)
-	printTimer(start)
 
 	if !ok {
 		os.Exit(1)
@@ -253,38 +239,29 @@ func main() {
 	Configure()
 
 	if ShowVersion {
-		fmt.Println(Version)
+		log.Println(Version)
 		os.Exit(0)
 	}
 
 	switch Command {
 	case CommandCreate:
 		Create()
-
 	case CommandMigrate:
 		Migrate()
-
 	case CommandGoto:
 		Goto()
-
 	case CommandUp:
 		Up()
-
 	case CommandDown:
 		Down()
-
 	case CommandRedo:
 		Redo()
-
 	case CommandReset:
 		Reset()
-
 	case CommandVersion:
 		DatabaseVersion()
-
 	case CommandHelp:
 		Usage()
-
 	default:
 		Usage()
 		os.Exit(1)
@@ -292,43 +269,32 @@ func main() {
 }
 
 func writePipe(pipe chan interface{}) (ok bool) {
-	okFlag := true
+	red := color.New(color.FgRed).SprintFunc()
+	green := color.New(color.FgGreen).SprintFunc()
+	ok = true
+
 	if pipe != nil {
 		for item := range pipe {
 			switch item.(type) {
-			case string:
-				fmt.Println(item.(string))
-
 			case error:
-				c := color.New(color.FgRed)
-				c.Printf("%s\n\n", item.(error))
-				okFlag = false
+				log.Printf("%s\n\n", red(item))
+				ok = false
 
 			case file.File:
 				f := item.(file.File)
-				if f.Direction == direction.Up {
-					c := color.New(color.FgGreen)
-					c.Print(">")
-				} else if f.Direction == direction.Down {
-					c := color.New(color.FgRed)
-					c.Print("<")
+
+				switch f.Direction {
+				case direction.Up:
+					log.Printf("%s %s", green(">"), f.FileName)
+				case direction.Down:
+					log.Printf("%s %s", red("<"), f.FileName)
 				}
-				fmt.Printf(" %s\n", f.FileName)
 
 			default:
-				fmt.Println(item)
+				log.Println(item)
 			}
 		}
 	}
-	return okFlag
-}
 
-func printTimer(start time.Time) {
-	diff := time.Since(start)
-
-	if diff > 60*time.Second {
-		fmt.Printf("\n%.4f minutes\n", diff.Minutes())
-	} else {
-		fmt.Printf("\n%.4f seconds\n", diff.Seconds())
-	}
+	return
 }
