@@ -239,7 +239,7 @@ func main() {
 	Configure()
 
 	if ShowVersion {
-		log.Println(Version)
+		log.Printf("Version %s", Version)
 		os.Exit(0)
 	}
 
