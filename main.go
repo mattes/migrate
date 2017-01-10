@@ -105,13 +105,19 @@ Commands:
 `)
 }
 
+func verifyMigrationsPath() {
+	if MigrationsPath == "" {
+		log.Fatal("Migrations path not given.")
+	}
+}
+
 // Create a new migration in the migration path.
 func Create() {
-	verifyMigrationsPath(MigrationsPath)
+	verifyMigrationsPath()
 
 	name := Args[0]
 	if name == "" {
-		log.Fatal("Please specify name.")
+		log.Fatal("Migration name not given.")
 	}
 
 	migrationFile, err := migrate.Create(DatabaseURL, MigrationsPath, name)
@@ -126,20 +132,18 @@ func Create() {
 
 // Migrate runs all pending migrations in the migration path.
 func Migrate() {
-	verifyMigrationsPath(MigrationsPath)
+	verifyMigrationsPath()
 
-	relativeN := Args[0]
-
-	relativeNInt, err := strconv.Atoi(relativeN)
+	relative, err := strconv.Atoi(Args[0])
 	if err != nil {
-		log.Fatal("Unable to parse param <n>.")
+		log.Fatalf("%q is not a valid number of migrations.", Args[0])
 	}
 
-	timerStart = time.Now()
+	start := time.Now()
 	pipe := pipep.New()
-	go migrate.Migrate(pipe, DatabaseURL, MigrationsPath, relativeNInt)
+	go migrate.Migrate(pipe, DatabaseURL, MigrationsPath, relative)
 	ok := writePipe(pipe)
-	printTimer()
+	printTimer(start)
 
 	if !ok {
 		os.Exit(1)
@@ -148,26 +152,25 @@ func Migrate() {
 
 // Goto migrates the database to a specific version.
 func Goto() {
-	verifyMigrationsPath(MigrationsPath)
+	verifyMigrationsPath()
 
-	toVersion := Args[0]
-	toVersionInt, err := strconv.Atoi(toVersion)
-	if err != nil || toVersionInt < 0 {
-		log.Fatal("Unable to parse param <v>.")
+	target, err := strconv.Atoi(Args[0])
+	if err != nil || target < 0 {
+		log.Fatalf("%q is not a valid target version.", Args[0])
 	}
 
-	currentVersion, err := migrate.Version(DatabaseURL, MigrationsPath)
+	current, err := migrate.Version(DatabaseURL, MigrationsPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	relativeNInt := toVersionInt - int(currentVersion)
+	relative := target - int(current)
 
-	timerStart = time.Now()
+	start := time.Now()
 	pipe := pipep.New()
-	go migrate.Migrate(pipe, DatabaseURL, MigrationsPath, relativeNInt)
+	go migrate.Migrate(pipe, DatabaseURL, MigrationsPath, relative)
 	ok := writePipe(pipe)
-	printTimer()
+	printTimer(start)
 
 	if !ok {
 		os.Exit(1)
@@ -176,13 +179,13 @@ func Goto() {
 
 // Up runs all up migrations.
 func Up() {
-	verifyMigrationsPath(MigrationsPath)
+	verifyMigrationsPath()
 
-	timerStart = time.Now()
+	start := time.Now()
 	pipe := pipep.New()
 	go migrate.Up(pipe, DatabaseURL, MigrationsPath)
 	ok := writePipe(pipe)
-	printTimer()
+	printTimer(start)
 
 	if !ok {
 		os.Exit(1)
@@ -191,13 +194,13 @@ func Up() {
 
 // Down runs all down migrations.
 func Down() {
-	verifyMigrationsPath(MigrationsPath)
+	verifyMigrationsPath()
 
-	timerStart = time.Now()
+	start := time.Now()
 	pipe := pipep.New()
 	go migrate.Down(pipe, DatabaseURL, MigrationsPath)
 	ok := writePipe(pipe)
-	printTimer()
+	printTimer(start)
 
 	if !ok {
 		os.Exit(1)
@@ -206,13 +209,13 @@ func Down() {
 
 // Redo rolls back the most recent migration and then applies it again.
 func Redo() {
-	verifyMigrationsPath(MigrationsPath)
+	verifyMigrationsPath()
 
-	timerStart = time.Now()
+	start := time.Now()
 	pipe := pipep.New()
 	go migrate.Redo(pipe, DatabaseURL, MigrationsPath)
 	ok := writePipe(pipe)
-	printTimer()
+	printTimer(start)
 
 	if !ok {
 		os.Exit(1)
@@ -221,22 +224,22 @@ func Redo() {
 
 // Reset runs all down migrations followed by all up migrations.
 func Reset() {
-	verifyMigrationsPath(MigrationsPath)
+	verifyMigrationsPath()
 
-	timerStart = time.Now()
+	start := time.Now()
 	pipe := pipep.New()
 	go migrate.Reset(pipe, DatabaseURL, MigrationsPath)
 	ok := writePipe(pipe)
-	printTimer()
+	printTimer(start)
 
 	if !ok {
 		os.Exit(1)
 	}
 }
 
-// Version shows the current migration version.
+// DatabaseVersion shows the current migration version.
 func DatabaseVersion() {
-	verifyMigrationsPath(MigrationsPath)
+	verifyMigrationsPath()
 
 	version, err := migrate.Version(DatabaseURL, MigrationsPath)
 	if err != nil {
@@ -291,58 +294,41 @@ func main() {
 func writePipe(pipe chan interface{}) (ok bool) {
 	okFlag := true
 	if pipe != nil {
-		for {
-			select {
-			case item, more := <-pipe:
-				if !more {
-					return okFlag
-				} else {
-					switch item.(type) {
+		for item := range pipe {
+			switch item.(type) {
+			case string:
+				fmt.Println(item.(string))
 
-					case string:
-						fmt.Println(item.(string))
+			case error:
+				c := color.New(color.FgRed)
+				c.Printf("%s\n\n", item.(error))
+				okFlag = false
 
-					case error:
-						c := color.New(color.FgRed)
-						c.Println(item.(error).Error(), "\n")
-						okFlag = false
-
-					case file.File:
-						f := item.(file.File)
-						if f.Direction == direction.Up {
-							c := color.New(color.FgGreen)
-							c.Print(">")
-						} else if f.Direction == direction.Down {
-							c := color.New(color.FgRed)
-							c.Print("<")
-						}
-						fmt.Printf(" %s\n", f.FileName)
-
-					default:
-						text := fmt.Sprint(item)
-						fmt.Println(text)
-					}
+			case file.File:
+				f := item.(file.File)
+				if f.Direction == direction.Up {
+					c := color.New(color.FgGreen)
+					c.Print(">")
+				} else if f.Direction == direction.Down {
+					c := color.New(color.FgRed)
+					c.Print("<")
 				}
+				fmt.Printf(" %s\n", f.FileName)
+
+			default:
+				fmt.Println(item)
 			}
 		}
 	}
 	return okFlag
 }
 
-func verifyMigrationsPath(path string) {
-	if path == "" {
-		fmt.Println("Please specify path")
-		os.Exit(1)
-	}
-}
+func printTimer(start time.Time) {
+	diff := time.Since(start)
 
-var timerStart time.Time
-
-func printTimer() {
-	diff := time.Now().Sub(timerStart).Seconds()
-	if diff > 60 {
-		fmt.Printf("\n%.4f minutes\n", diff/60)
+	if diff > 60*time.Second {
+		fmt.Printf("\n%.4f minutes\n", diff.Minutes())
 	} else {
-		fmt.Printf("\n%.4f seconds\n", diff)
+		fmt.Printf("\n%.4f seconds\n", diff.Seconds())
 	}
 }
