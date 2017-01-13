@@ -37,7 +37,7 @@ const (
 	CommandHelp    = "help"
 )
 
-// Flag to indicate that Usage() should not exit
+// NoExit is a flag to indicate that Usage() should not exit
 const NoExit = -1
 
 // Configuration variables
@@ -58,24 +58,16 @@ var (
 	Args []string
 )
 
-// init overrides the default configuration values with values from the environment.
-func init() {
-	DatabaseURL = os.Getenv("MIGRATE_URL")
-}
-
-// Configure strips the first command-line argument (the command name) and passes the remainder to ConfigureArgs().
+// Configure the CLI from the command-line arguments.  If the arguments could not be parsed, the program exits with an error.
 func Configure() {
-	ConfigureArgs(os.Args[1:])
-}
+	DatabaseURL = os.Getenv("MIGRATE_URL")
 
-// ConfigureArgs sets the configuration variables from the command-line arguments.  If the arguments could not be parsed, the program exits with an error.
-func ConfigureArgs(args []string) {
 	flags := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flags.Usage = func() { Usage(NoExit) }
 	flags.StringVar(&DatabaseURL, "url", DatabaseURL, "")
 	flags.StringVar(&MigrationsPath, "path", MigrationsPath, "")
 	flags.BoolVar(&ShowVersion, "version", ShowVersion, "Show migrate version")
-	flags.Parse(args)
+	flags.Parse(os.Args[1:])
 
 	if MigrationsPath == "" {
 		MigrationsPath, _ = os.Getwd()
@@ -111,16 +103,8 @@ Commands:
 	}
 }
 
-func verifyMigrationsPath() {
-	if MigrationsPath == "" {
-		log.Fatal("Migrations path not given.")
-	}
-}
-
 // Create a new migration in the migration path.
 func Create() {
-	verifyMigrationsPath()
-
 	name := Args[0]
 	if name == "" {
 		log.Fatal("Migration name not given.")
@@ -138,8 +122,6 @@ func Create() {
 
 // Migrate runs all pending migrations in the migration path.
 func Migrate(pipe chan interface{}) {
-	verifyMigrationsPath()
-
 	relative, err := strconv.Atoi(Args[0])
 	if err != nil {
 		log.Fatalf("%q is not a valid number of migrations.", Args[0])
@@ -150,8 +132,6 @@ func Migrate(pipe chan interface{}) {
 
 // Goto migrates the database to a specific version.
 func Goto(pipe chan interface{}) {
-	verifyMigrationsPath()
-
 	target, err := strconv.Atoi(Args[0])
 	if err != nil || target < 0 {
 		log.Fatalf("%q is not a valid target version.", Args[0])
@@ -167,34 +147,8 @@ func Goto(pipe chan interface{}) {
 	go migrate.Migrate(pipe, DatabaseURL, MigrationsPath, relative)
 }
 
-// Up runs all up migrations.
-func Up(pipe chan interface{}) {
-	verifyMigrationsPath()
-	go migrate.Up(pipe, DatabaseURL, MigrationsPath)
-}
-
-// Down runs all down migrations.
-func Down(pipe chan interface{}) {
-	verifyMigrationsPath()
-	go migrate.Down(pipe, DatabaseURL, MigrationsPath)
-}
-
-// Redo rolls back the most recent migration and then applies it again.
-func Redo(pipe chan interface{}) {
-	verifyMigrationsPath()
-	go migrate.Redo(pipe, DatabaseURL, MigrationsPath)
-}
-
-// Reset runs all down migrations followed by all up migrations.
-func Reset(pipe chan interface{}) {
-	verifyMigrationsPath()
-	go migrate.Reset(pipe, DatabaseURL, MigrationsPath)
-}
-
 // DatabaseVersion shows the current migration version.
 func DatabaseVersion() {
-	verifyMigrationsPath()
-
 	version, err := migrate.Version(DatabaseURL, MigrationsPath)
 	if err != nil {
 		log.Fatal(err)
@@ -223,13 +177,13 @@ func main() {
 	case CommandGoto:
 		Goto(pipe)
 	case CommandUp:
-		Up(pipe)
+		go migrate.Up(pipe, DatabaseURL, MigrationsPath)
 	case CommandDown:
-		Down(pipe)
+		go migrate.Down(pipe, DatabaseURL, MigrationsPath)
 	case CommandRedo:
-		Redo(pipe)
+		go migrate.Redo(pipe, DatabaseURL, MigrationsPath)
 	case CommandReset:
-		Reset(pipe)
+		go migrate.Reset(pipe, DatabaseURL, MigrationsPath)
 	case CommandVersion:
 		DatabaseVersion()
 		close(pipe)
