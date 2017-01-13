@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/fatih/color"
 	_ "github.com/mattes/migrate/driver/bash"
@@ -35,6 +36,9 @@ const (
 	CommandVersion = "version"
 	CommandHelp    = "help"
 )
+
+// Flag to indicate that Usage() should not exit
+const NoExit = -1
 
 // Configuration variables
 var (
@@ -67,7 +71,7 @@ func Configure() {
 // ConfigureArgs sets the configuration variables from the command-line arguments.  If the arguments could not be parsed, the program exits with an error.
 func ConfigureArgs(args []string) {
 	flags := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	flags.Usage = Usage
+	flags.Usage = func() { Usage(NoExit) }
 	flags.StringVar(&DatabaseURL, "url", DatabaseURL, "")
 	flags.StringVar(&MigrationsPath, "path", MigrationsPath, "")
 	flags.BoolVar(&ShowVersion, "version", ShowVersion, "Show migrate version")
@@ -84,7 +88,7 @@ func ConfigureArgs(args []string) {
 }
 
 // Usage prints information about available commands.  This overrides the default output of the -help flag.
-func Usage() {
+func Usage(status int) {
 	os.Stderr.WriteString(
 		`usage: migrate [-path=<path>] -url=<url> <command> [<args>]
 
@@ -101,6 +105,10 @@ Commands:
 
 '-path' defaults to current working directory.
 `)
+
+	if status > NoExit {
+		os.Exit(status)
+	}
 }
 
 func verifyMigrationsPath() {
@@ -129,7 +137,7 @@ func Create() {
 }
 
 // Migrate runs all pending migrations in the migration path.
-func Migrate() {
+func Migrate(pipe chan interface{}) {
 	verifyMigrationsPath()
 
 	relative, err := strconv.Atoi(Args[0])
@@ -137,17 +145,11 @@ func Migrate() {
 		log.Fatalf("%q is not a valid number of migrations.", Args[0])
 	}
 
-	pipe := pipep.New()
 	go migrate.Migrate(pipe, DatabaseURL, MigrationsPath, relative)
-	ok := writePipe(pipe)
-
-	if !ok {
-		os.Exit(1)
-	}
 }
 
 // Goto migrates the database to a specific version.
-func Goto() {
+func Goto(pipe chan interface{}) {
 	verifyMigrationsPath()
 
 	target, err := strconv.Atoi(Args[0])
@@ -162,65 +164,31 @@ func Goto() {
 
 	relative := target - int(current)
 
-	pipe := pipep.New()
 	go migrate.Migrate(pipe, DatabaseURL, MigrationsPath, relative)
-	ok := writePipe(pipe)
-
-	if !ok {
-		os.Exit(1)
-	}
 }
 
 // Up runs all up migrations.
-func Up() {
+func Up(pipe chan interface{}) {
 	verifyMigrationsPath()
-
-	pipe := pipep.New()
 	go migrate.Up(pipe, DatabaseURL, MigrationsPath)
-	ok := writePipe(pipe)
-
-	if !ok {
-		os.Exit(1)
-	}
 }
 
 // Down runs all down migrations.
-func Down() {
+func Down(pipe chan interface{}) {
 	verifyMigrationsPath()
-
-	pipe := pipep.New()
 	go migrate.Down(pipe, DatabaseURL, MigrationsPath)
-	ok := writePipe(pipe)
-
-	if !ok {
-		os.Exit(1)
-	}
 }
 
 // Redo rolls back the most recent migration and then applies it again.
-func Redo() {
+func Redo(pipe chan interface{}) {
 	verifyMigrationsPath()
-
-	pipe := pipep.New()
 	go migrate.Redo(pipe, DatabaseURL, MigrationsPath)
-	ok := writePipe(pipe)
-
-	if !ok {
-		os.Exit(1)
-	}
 }
 
 // Reset runs all down migrations followed by all up migrations.
-func Reset() {
+func Reset(pipe chan interface{}) {
 	verifyMigrationsPath()
-
-	pipe := pipep.New()
 	go migrate.Reset(pipe, DatabaseURL, MigrationsPath)
-	ok := writePipe(pipe)
-
-	if !ok {
-		os.Exit(1)
-	}
 }
 
 // DatabaseVersion shows the current migration version.
@@ -243,27 +211,37 @@ func main() {
 		os.Exit(0)
 	}
 
+	start := time.Now()
+	pipe := pipep.New()
+
 	switch Command {
 	case CommandCreate:
 		Create()
+		close(pipe)
 	case CommandMigrate:
-		Migrate()
+		Migrate(pipe)
 	case CommandGoto:
-		Goto()
+		Goto(pipe)
 	case CommandUp:
-		Up()
+		Up(pipe)
 	case CommandDown:
-		Down()
+		Down(pipe)
 	case CommandRedo:
-		Redo()
+		Redo(pipe)
 	case CommandReset:
-		Reset()
+		Reset(pipe)
 	case CommandVersion:
 		DatabaseVersion()
+		close(pipe)
 	case CommandHelp:
-		Usage()
+		Usage(0)
 	default:
-		Usage()
+		Usage(1)
+	}
+
+	if ok := writePipe(pipe); ok {
+		log.Printf("Total time: %s", time.Since(start))
+	} else {
 		os.Exit(1)
 	}
 }
