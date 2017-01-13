@@ -157,17 +157,8 @@ func DatabaseVersion() {
 	log.Println(version)
 }
 
-func main() {
-	Configure()
-
-	if ShowVersion {
-		log.Printf("Version %s", Version)
-		os.Exit(0)
-	}
-
-	start := time.Now()
-	pipe := pipep.New()
-
+// Dispatch based on the command given in the arguments.
+func Dispatch(pipe chan interface{}) {
 	switch Command {
 	case CommandCreate:
 		Create()
@@ -192,6 +183,20 @@ func main() {
 	default:
 		Usage(1)
 	}
+}
+
+func main() {
+	Configure()
+
+	if ShowVersion {
+		log.Printf("Version %s", Version)
+		os.Exit(0)
+	}
+
+	start := time.Now()
+	pipe := pipep.New()
+
+	Dispatch(pipe)
 
 	if ok := writePipe(pipe); ok {
 		log.Printf("Total time: %s", time.Since(start))
