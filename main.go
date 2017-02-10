@@ -5,7 +5,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -25,209 +25,63 @@ import (
 	pipep "github.com/mattes/migrate/pipe"
 )
 
-var url = flag.String("url", os.Getenv("MIGRATE_URL"), "")
-var migrationsPath = flag.String("path", "", "")
-var version = flag.Bool("version", false, "Show migrate version")
+// Available commands
+const (
+	CommandCreate  = "create"
+	CommandMigrate = "migrate"
+	CommandGoto    = "goto"
+	CommandUp      = "up"
+	CommandDown    = "down"
+	CommandRedo    = "redo"
+	CommandReset   = "reset"
+	CommandVersion = "version"
+	CommandHelp    = "help"
+)
 
-func main() {
-	flag.Usage = func() {
-		helpCmd()
+// NoExit is a flag to indicate that Usage() should not exit
+const NoExit = -1
+
+// Configuration variables
+var (
+	// The URL of the database to migrate
+	DatabaseURL string
+
+	// The directory containing the migration files
+	MigrationsPath string
+
+	// Whether or not to show the migration files
+	ShowVersion bool
+
+	// The command given
+	Command string
+
+	// The remaining command-line arguments
+	Args []string
+)
+
+// Configure the CLI from the command-line arguments.  If the arguments could not be parsed, the program exits with an error.
+func Configure() {
+	DatabaseURL = os.Getenv("MIGRATE_URL")
+
+	flags := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flags.Usage = func() { Usage(NoExit) }
+	flags.StringVar(&DatabaseURL, "url", DatabaseURL, "")
+	flags.StringVar(&MigrationsPath, "path", MigrationsPath, "")
+	flags.BoolVar(&ShowVersion, "version", ShowVersion, "Show migrate version")
+	flags.Parse(os.Args[1:])
+
+	if MigrationsPath == "" {
+		MigrationsPath, _ = os.Getwd()
 	}
 
-	flag.Parse()
-	command := flag.Arg(0)
-	if *version {
-		fmt.Println(Version)
-		os.Exit(0)
-	}
-
-	if *migrationsPath == "" {
-		*migrationsPath, _ = os.Getwd()
-	}
-
-	switch command {
-	case "create":
-		verifyMigrationsPath(*migrationsPath)
-		name := flag.Arg(1)
-		if name == "" {
-			fmt.Println("Please specify name.")
-			os.Exit(1)
-		}
-
-		migrationFile, err := migrate.Create(*url, *migrationsPath, name)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		fmt.Printf("Version %v migration files created in %v:\n", migrationFile.Version, *migrationsPath)
-		fmt.Println(migrationFile.UpFile.FileName)
-		fmt.Println(migrationFile.DownFile.FileName)
-
-	case "migrate":
-		verifyMigrationsPath(*migrationsPath)
-		relativeN := flag.Arg(1)
-		relativeNInt, err := strconv.Atoi(relativeN)
-		if err != nil {
-			fmt.Println("Unable to parse param <n>.")
-			os.Exit(1)
-		}
-		timerStart = time.Now()
-		pipe := pipep.New()
-		go migrate.Migrate(pipe, *url, *migrationsPath, relativeNInt)
-		ok := writePipe(pipe)
-		printTimer()
-		if !ok {
-			os.Exit(1)
-		}
-
-	case "goto":
-		verifyMigrationsPath(*migrationsPath)
-		toVersion := flag.Arg(1)
-		toVersionInt, err := strconv.Atoi(toVersion)
-		if err != nil || toVersionInt < 0 {
-			fmt.Println("Unable to parse param <v>.")
-			os.Exit(1)
-		}
-
-		currentVersion, err := migrate.Version(*url, *migrationsPath)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		relativeNInt := toVersionInt - int(currentVersion)
-
-		timerStart = time.Now()
-		pipe := pipep.New()
-		go migrate.Migrate(pipe, *url, *migrationsPath, relativeNInt)
-		ok := writePipe(pipe)
-		printTimer()
-		if !ok {
-			os.Exit(1)
-		}
-
-	case "up":
-		verifyMigrationsPath(*migrationsPath)
-		timerStart = time.Now()
-		pipe := pipep.New()
-		go migrate.Up(pipe, *url, *migrationsPath)
-		ok := writePipe(pipe)
-		printTimer()
-		if !ok {
-			os.Exit(1)
-		}
-
-	case "down":
-		verifyMigrationsPath(*migrationsPath)
-		timerStart = time.Now()
-		pipe := pipep.New()
-		go migrate.Down(pipe, *url, *migrationsPath)
-		ok := writePipe(pipe)
-		printTimer()
-		if !ok {
-			os.Exit(1)
-		}
-
-	case "redo":
-		verifyMigrationsPath(*migrationsPath)
-		timerStart = time.Now()
-		pipe := pipep.New()
-		go migrate.Redo(pipe, *url, *migrationsPath)
-		ok := writePipe(pipe)
-		printTimer()
-		if !ok {
-			os.Exit(1)
-		}
-
-	case "reset":
-		verifyMigrationsPath(*migrationsPath)
-		timerStart = time.Now()
-		pipe := pipep.New()
-		go migrate.Reset(pipe, *url, *migrationsPath)
-		ok := writePipe(pipe)
-		printTimer()
-		if !ok {
-			os.Exit(1)
-		}
-
-	case "version":
-		verifyMigrationsPath(*migrationsPath)
-		version, err := migrate.Version(*url, *migrationsPath)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		fmt.Println(version)
-
-	default:
-		helpCmd()
-		os.Exit(1)
-	case "help":
-		helpCmd()
+	if flags.NArg() > 0 {
+		Command = flags.Arg(0)
+		Args = flags.Args()[1:]
 	}
 }
 
-func writePipe(pipe chan interface{}) (ok bool) {
-	okFlag := true
-	if pipe != nil {
-		for {
-			select {
-			case item, more := <-pipe:
-				if !more {
-					return okFlag
-				} else {
-					switch item.(type) {
-
-					case string:
-						fmt.Println(item.(string))
-
-					case error:
-						c := color.New(color.FgRed)
-						c.Println(item.(error).Error(), "\n")
-						okFlag = false
-
-					case file.File:
-						f := item.(file.File)
-						if f.Direction == direction.Up {
-							c := color.New(color.FgGreen)
-							c.Print(">")
-						} else if f.Direction == direction.Down {
-							c := color.New(color.FgRed)
-							c.Print("<")
-						}
-						fmt.Printf(" %s\n", f.FileName)
-
-					default:
-						text := fmt.Sprint(item)
-						fmt.Println(text)
-					}
-				}
-			}
-		}
-	}
-	return okFlag
-}
-
-func verifyMigrationsPath(path string) {
-	if path == "" {
-		fmt.Println("Please specify path")
-		os.Exit(1)
-	}
-}
-
-var timerStart time.Time
-
-func printTimer() {
-	diff := time.Now().Sub(timerStart).Seconds()
-	if diff > 60 {
-		fmt.Printf("\n%.4f minutes\n", diff/60)
-	} else {
-		fmt.Printf("\n%.4f seconds\n", diff)
-	}
-}
-
-func helpCmd() {
+// Usage prints information about available commands.  This overrides the default output of the -help flag.
+func Usage(status int) {
 	os.Stderr.WriteString(
 		`usage: migrate [-path=<path>] -url=<url> <command> [<args>]
 
@@ -244,4 +98,141 @@ Commands:
 
 '-path' defaults to current working directory.
 `)
+
+	if status > NoExit {
+		os.Exit(status)
+	}
+}
+
+// Create a new migration in the migration path.
+func Create() {
+	name := Args[0]
+	if name == "" {
+		log.Fatal("Migration name not given.")
+	}
+
+	migrationFile, err := migrate.Create(DatabaseURL, MigrationsPath, name)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf("Version %v migration files created in %v:\n", migrationFile.Version, MigrationsPath)
+	log.Println(migrationFile.UpFile.FileName)
+	log.Println(migrationFile.DownFile.FileName)
+}
+
+// Migrate runs all pending migrations in the migration path.
+func Migrate(pipe chan interface{}) {
+	relative, err := strconv.Atoi(Args[0])
+	if err != nil {
+		log.Fatalf("%q is not a valid number of migrations.", Args[0])
+	}
+
+	go migrate.Migrate(pipe, DatabaseURL, MigrationsPath, relative)
+}
+
+// Goto migrates the database to a specific version.
+func Goto(pipe chan interface{}) {
+	target, err := strconv.Atoi(Args[0])
+	if err != nil || target < 0 {
+		log.Fatalf("%q is not a valid target version.", Args[0])
+	}
+
+	current, err := migrate.Version(DatabaseURL, MigrationsPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	relative := target - int(current)
+
+	go migrate.Migrate(pipe, DatabaseURL, MigrationsPath, relative)
+}
+
+// DatabaseVersion shows the current migration version.
+func DatabaseVersion() {
+	version, err := migrate.Version(DatabaseURL, MigrationsPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println(version)
+}
+
+// Dispatch based on the command given in the arguments.
+func Dispatch(pipe chan interface{}) {
+	switch Command {
+	case CommandCreate:
+		Create()
+		close(pipe)
+	case CommandMigrate:
+		Migrate(pipe)
+	case CommandGoto:
+		Goto(pipe)
+	case CommandUp:
+		go migrate.Up(pipe, DatabaseURL, MigrationsPath)
+	case CommandDown:
+		go migrate.Down(pipe, DatabaseURL, MigrationsPath)
+	case CommandRedo:
+		go migrate.Redo(pipe, DatabaseURL, MigrationsPath)
+	case CommandReset:
+		go migrate.Reset(pipe, DatabaseURL, MigrationsPath)
+	case CommandVersion:
+		DatabaseVersion()
+		close(pipe)
+	case CommandHelp:
+		Usage(0)
+	default:
+		Usage(1)
+	}
+}
+
+func main() {
+	Configure()
+
+	if ShowVersion {
+		log.Printf("Version %s", Version)
+		os.Exit(0)
+	}
+
+	start := time.Now()
+	pipe := pipep.New()
+
+	Dispatch(pipe)
+
+	if ok := writePipe(pipe); ok {
+		log.Printf("Total time: %s", time.Since(start))
+	} else {
+		os.Exit(1)
+	}
+}
+
+func writePipe(pipe chan interface{}) (ok bool) {
+	red := color.New(color.FgRed).SprintFunc()
+	green := color.New(color.FgGreen).SprintFunc()
+	ok = true
+
+	if pipe != nil {
+		for item := range pipe {
+			switch item.(type) {
+			case error:
+				log.Printf("%s\n\n", red(item))
+				ok = false
+
+			case file.File:
+				f := item.(file.File)
+
+				switch f.Direction {
+				case direction.Up:
+					log.Printf("%s %s", green(">"), f.FileName)
+				case direction.Down:
+					log.Printf("%s %s", red("<"), f.FileName)
+				}
+
+			default:
+				log.Println(item)
+			}
+		}
+	}
+
+	return
 }
