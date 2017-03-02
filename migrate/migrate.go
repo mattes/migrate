@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mattes/migrate/driver"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
-	pipep "github.com/mattes/migrate/pipe"
+	"github.com/axiomzen/migrate/driver"
+	"github.com/axiomzen/migrate/file"
+	"github.com/axiomzen/migrate/migrate/direction"
+	pipep "github.com/axiomzen/migrate/pipe"
 )
 
 // Up applies all available migrations
@@ -217,6 +217,9 @@ func Version(url, migrationsPath string) (version uint64, err error) {
 	if err != nil {
 		return 0, err
 	}
+	defer func() {
+		err = d.Close()
+	}()
 	return d.Version()
 }
 

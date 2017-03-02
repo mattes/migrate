@@ -1,5 +1,5 @@
 TESTFLAGS?=
-IMAGE=mattes/migrate
+IMAGE=axiomzen/migrate
 DCR=docker-compose run --rm
 GOTEST=go test $(TESTFLAGS) `go list  ./... | grep -v "/vendor/"`
 

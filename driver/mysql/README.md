@@ -1,6 +1,6 @@
 # MySQL Driver
 
-### See [issue #1](https://github.com/mattes/migrate/issues/1#issuecomment-58728186) before using this driver!
+### See [issue #1](https://github.com/axiomzen/migrate/issues/1#issuecomment-58728186) before using this driver!
 
 * Runs migrations in transcations.
   That means that if a migration failes, it will be safely rolled back.
@@ -21,4 +21,4 @@ See full [DSN (Data Source Name) documentation](https://github.com/go-sql-driver
 
 ## Authors
 
-* Matthias Kadenbach, https://github.com/mattes
+* Matthias Kadenbach, https://github.com/axiomzen

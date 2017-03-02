@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jmcvetta/neoism"
-	"github.com/mattes/migrate/driver"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
+	"github.com/axiomzen/migrate/driver"
+	"github.com/axiomzen/migrate/file"
+	"github.com/axiomzen/migrate/migrate/direction"
 	"strings"
 )
 
