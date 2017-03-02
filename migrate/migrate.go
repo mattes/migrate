@@ -217,6 +217,7 @@ func Version(url, migrationsPath string) (version uint64, err error) {
 	if err != nil {
 		return 0, err
 	}
+	defer d.Close()
 	return d.Version()
 }
 
