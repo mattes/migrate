@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
-	pipep "github.com/mattes/migrate/pipe"
+	"github.com/axiomzen/migrate-1/file"
+	"github.com/axiomzen/migrate-1/migrate/direction"
+	pipep "github.com/axiomzen/migrate-1/pipe"
 )
 
 func TestContentSplit(t *testing.T) {
