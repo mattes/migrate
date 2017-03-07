@@ -14,10 +14,10 @@ import (
 // Basic testing is already done in migrate/migrate_test.go
 func TestMigrate(t *testing.T) {
 
-	// to run tests, start a neo4j container, log in via the website
-	// then set password to test
-	// then run go test
-	driverURL := `bolt://neo4j:test@localhost:7687` // + host + ":" + port
+	// note: if you want to use the front end as well, change the
+	// password to whatever you change it to in the web client
+	//driverURL := `bolt://neo4j:neo4j@localhost:7687` // + host + ":" + port
+	driverURL := `bolt://neo4j:neo4j@bolt:7687` // + host + ":" + port
 
 	// prepare clean database
 	//db, err := neoism.Connect(driverURL)
