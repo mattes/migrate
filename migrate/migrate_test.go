@@ -18,8 +18,8 @@ import (
 
 // Add Driver URLs here to test basic Up, Down, .. functions.
 var driverURLs = []string{
-	//	"postgres://postgres@" + os.Getenv("POSTGRES_PORT_5432_TCP_ADDR") + ":" + os.Getenv("POSTGRES_PORT_5432_TCP_PORT") + "/template1?sslmode=disable",
-	//	"ql+file://./test.db",
+	"postgres://postgres@" + os.Getenv("POSTGRES_PORT_5432_TCP_ADDR") + ":" + os.Getenv("POSTGRES_PORT_5432_TCP_PORT") + "/template1?sslmode=disable",
+	"ql+file://./test.db",
 	"bolt://neo4j:test@localhost:7687",
 }
 
