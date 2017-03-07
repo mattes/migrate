@@ -12,6 +12,7 @@ go-test:
     - cassandra
     - crate
     - mongo
+    - bolt
 go-build:
   <<: *go
   command: sh -c 'go get -v && go build -ldflags ''-s'' -o migrater'
@@ -30,3 +31,5 @@ crate:
   image: crate
 mongo:
   image: mongo:3.2.6
+bolt:
+  image: neo4j
