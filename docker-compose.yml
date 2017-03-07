@@ -33,7 +33,7 @@ mongo:
   image: mongo:3.2.6
 bolt:
   image: neo4j:3.1.1
-  ports:
-    - "7687":"7687"
   environment:
     - NEO4J_AUTH=neo4j/neo4j
+  ports:
+    - "7687:7687"
