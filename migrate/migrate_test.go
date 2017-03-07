@@ -20,7 +20,7 @@ import (
 var driverURLs = []string{
 	"postgres://postgres@" + os.Getenv("POSTGRES_PORT_5432_TCP_ADDR") + ":" + os.Getenv("POSTGRES_PORT_5432_TCP_PORT") + "/template1?sslmode=disable",
 	"ql+file://./test.db",
-	"bolt://neo4j:neo4j@bolt:7687",
+	"bolt://neo4j:neo4j@localhost:7687",
 }
 
 func tearDown(driverURL, tmpdir string) {

@@ -33,5 +33,5 @@ mongo:
   image: mongo:3.2.6
 bolt:
   image: neo4j:3.1.1
-  environment: 
+  environment:
     - NEO4J_AUTH=neo4j/neo4j
