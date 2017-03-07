@@ -16,7 +16,7 @@ func TestMigrate(t *testing.T) {
 
 	// note: if you want to use the front end as well, change the
 	// password to whatever you change it to in the web client
-	driverURL := `bolt://neo4j:neo4j@localhost:7687` // + host + ":" + port
+	driverURL := `bolt://neo4j:test@bolt:7687` // + host + ":" + port
 
 	// prepare clean database
 	//db, err := neoism.Connect(driverURL)

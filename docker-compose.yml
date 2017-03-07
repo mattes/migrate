@@ -34,6 +34,6 @@ mongo:
 bolt:
   image: neo4j:3.1.1
   environment:
-    - NEO4J_AUTH=neo4j/neo4j
+    - NEO4J_AUTH=neo4j/test
   ports:
     - "7687:7687"
