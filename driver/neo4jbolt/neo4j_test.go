@@ -19,27 +19,17 @@ func TestMigrate(t *testing.T) {
 	driverURL := `bolt://neo4j:test@bolt:7687` // + host + ":" + port
 
 	// prepare clean database
-	//db, err := neoism.Connect(driverURL)
-
 	tempdriver := bolt.NewDriver()
 	conn, err := tempdriver.OpenNeo(driverURL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	//defer conn.Close()
 
-	// cq := neoism.CypherQuery{
-	// 	Statement: `DROP INDEX ON :Yolo(name)`,
-	// }
-	cq := `DROP INDEX ON :Yolo(name)`
-
+	// cleanup tests
 	// If an error dropping the index then ignore it
-	//db.Cypher(&cq)
-	conn.ExecNeo(cq, nil)
+	conn.ExecPipeline([]string{`DROP INDEX ON :Yolo(name)`, `MATCH (n:` + labelName + `) DELETE n`})
 
 	conn.Close()
-
-	//driverURL = "neo4j://neo4j:test@" + host + ":" + port + "/db/data"
 
 	d0 := driver.GetDriver("bolt")
 	d, ok := d0.(*Driver)
