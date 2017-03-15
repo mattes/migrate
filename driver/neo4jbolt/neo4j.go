@@ -9,10 +9,10 @@ import (
 	log "log"
 	"strings"
 
+	bolt "github.com/axiomzen/golang-neo4j-bolt-driver"
 	driver "github.com/axiomzen/migrate/driver"
 	"github.com/axiomzen/migrate/file"
 	"github.com/axiomzen/migrate/migrate/direction"
-	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
 )
 
 // Driver is the holding struct
@@ -25,9 +25,10 @@ const propertyName = "version"
 
 // Initialize creates the db connection
 func (d *Driver) Initialize(url string) error {
-
-	dr := bolt.NewDriver()
-	conn, err := dr.OpenNeo(url)
+	op := bolt.DefaultDriverOptions()
+	op.Addr = url
+	dr := bolt.NewDriverWithOptions(op)
+	conn, err := dr.OpenNeo()
 
 	if err != nil {
 		return err

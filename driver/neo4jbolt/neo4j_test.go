@@ -3,11 +3,11 @@ package neo4jbolt
 import (
 	"testing"
 
+	bolt "github.com/axiomzen/golang-neo4j-bolt-driver"
 	"github.com/axiomzen/migrate/driver"
 	"github.com/axiomzen/migrate/file"
 	"github.com/axiomzen/migrate/migrate/direction"
 	pipep "github.com/axiomzen/migrate/pipe"
-	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
 )
 
 // TestMigrate runs some additional tests on Migrate().
@@ -19,8 +19,10 @@ func TestMigrate(t *testing.T) {
 	driverURL := `bolt://neo4j:test@bolt:7687` // + host + ":" + port
 
 	// prepare clean database
-	tempdriver := bolt.NewDriver()
-	conn, err := tempdriver.OpenNeo(driverURL)
+	op := bolt.DefaultDriverOptions()
+	op.Addr = driverURL
+	tempdriver := bolt.NewDriverWithOptions(op)
+	conn, err := tempdriver.OpenNeo()
 	if err != nil {
 		t.Fatal(err)
 	}
