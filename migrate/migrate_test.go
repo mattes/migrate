@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -8,15 +9,18 @@ import (
 
 	// Ensure imports for each driver we wish to test
 
-	_ "github.com/mattes/migrate/driver/postgres"
-	_ "github.com/mattes/migrate/driver/ql"
-	_ "github.com/mattes/migrate/driver/sqlite3"
+	"github.com/axiomzen/migrate/driver"
+	_ "github.com/axiomzen/migrate/driver/neo4jbolt"
+	_ "github.com/axiomzen/migrate/driver/postgres"
+	_ "github.com/axiomzen/migrate/driver/ql"
+	_ "github.com/axiomzen/migrate/driver/sqlite3"
 )
 
 // Add Driver URLs here to test basic Up, Down, .. functions.
 var driverURLs = []string{
 	"postgres://postgres@" + os.Getenv("POSTGRES_PORT_5432_TCP_ADDR") + ":" + os.Getenv("POSTGRES_PORT_5432_TCP_PORT") + "/template1?sslmode=disable",
 	"ql+file://./test.db",
+	"bolt://neo4j:test@bolt:7687",
 }
 
 func tearDown(driverURL, tmpdir string) {
@@ -50,11 +54,18 @@ func TestCreate(t *testing.T) {
 		if len(files) != 4 {
 			t.Fatal("Expected 4 new files, got", len(files))
 		}
-		fileNameRegexp := regexp.MustCompile(`^\d{10}_(.*.[up|down].sql)`)
+
+		d, err := driver.New(driverURL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ext := d.FilenameExtension()
+
+		fileNameRegexp := regexp.MustCompile(fmt.Sprintf(`^\d{10}_(.*.[up|down].%s)`, ext))
 
 		expectFiles := []string{
-			"test_migration.up.sql", "test_migration.down.sql",
-			"another_migration.up.sql", "another_migration.down.sql",
+			"test_migration.up." + ext, "test_migration.down." + ext,
+			"another_migration.up." + ext, "another_migration.down." + ext,
 		}
 
 		var foundCounter int

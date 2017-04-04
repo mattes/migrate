@@ -3,17 +3,17 @@ package example
 import (
 	"testing"
 
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
+	"github.com/axiomzen/migrate/file"
+	"github.com/axiomzen/migrate/migrate/direction"
 
 	"os"
 	"reflect"
 	"time"
 
-	"github.com/mattes/migrate/driver"
-	"github.com/mattes/migrate/driver/mongodb"
-	"github.com/mattes/migrate/driver/mongodb/gomethods"
-	pipep "github.com/mattes/migrate/pipe"
+	"github.com/axiomzen/migrate/driver"
+	"github.com/axiomzen/migrate/driver/mongodb"
+	"github.com/axiomzen/migrate/driver/mongodb/gomethods"
+	pipep "github.com/axiomzen/migrate/pipe"
 )
 
 type ExpectedMigrationResult struct {

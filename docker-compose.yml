@@ -1,6 +1,6 @@
 go: &go
   image: golang
-  working_dir: /go/src/github.com/mattes/migrate
+  working_dir: /go/src/github.com/axiomzen/migrate
   volumes:
     - $GOPATH:/go
 go-test:
@@ -12,6 +12,7 @@ go-test:
     - cassandra
     - crate
     - mongo
+    - bolt
 go-build:
   <<: *go
   command: sh -c 'go get -v && go build -ldflags ''-s'' -o migrater'
@@ -30,3 +31,9 @@ crate:
   image: crate
 mongo:
   image: mongo:3.2.6
+bolt:
+  image: neo4j:3.1.1
+  environment:
+    - NEO4J_AUTH=neo4j/test
+  ports:
+    - "7687:7687"

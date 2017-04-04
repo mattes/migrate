@@ -5,10 +5,10 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/mattes/migrate/driver"
-	"github.com/mattes/migrate/driver/mongodb/gomethods"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
+	"github.com/axiomzen/migrate/driver"
+	"github.com/axiomzen/migrate/driver/mongodb/gomethods"
+	"github.com/axiomzen/migrate/file"
+	"github.com/axiomzen/migrate/migrate/direction"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
