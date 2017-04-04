@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	driver.RegisterDriver("crate", &Driver{})
+	driver.RegisterDriver("crate", Driver{})
 }
 
 type Driver struct {

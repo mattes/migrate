@@ -181,5 +181,5 @@ func (driver *Driver) Version() (uint64, error) {
 }
 
 func init() {
-	driver.RegisterDriver("mysql", &Driver{})
+	driver.RegisterDriver("mysql", Driver{})
 }
