@@ -4,9 +4,13 @@ package mysql
 import (
 	"bufio"
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -27,6 +31,34 @@ func (driver *Driver) Initialize(url string) error {
 	urlWithoutScheme := strings.SplitN(url, "mysql://", 2)
 	if len(urlWithoutScheme) != 2 {
 		return errors.New("invalid mysql:// scheme")
+	}
+
+	// check if env vars vor mysql ssl connection are set and if yes use them
+	if os.Getenv("MYSQL_SERVER_CA") != "" && os.Getenv("MYSQL_CLIENT_KEY") != "" && os.Getenv("MYSQL_CLIENT_CERT") != "" {
+		rootCertPool := x509.NewCertPool()
+		pem, err := ioutil.ReadFile(os.Getenv("MYSQL_SERVER_CA"))
+		if err != nil {
+			return err
+		}
+
+		if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
+			return errors.New("Failed to append PEM")
+		}
+
+		clientCert := make([]tls.Certificate, 0, 1)
+		certs, err := tls.LoadX509KeyPair(os.Getenv("MYSQL_CLIENT_CERT"), os.Getenv("MYSQL_CLIENT_KEY"))
+		if err != nil {
+			return err
+		}
+
+		clientCert = append(clientCert, certs)
+		mysql.RegisterTLSConfig("custom", &tls.Config{
+			RootCAs:            rootCertPool,
+			Certificates:       clientCert,
+			InsecureSkipVerify: true,
+		})
+
+		urlWithoutScheme[1] += "&tls=custom"
 	}
 
 	db, err := sql.Open("mysql", urlWithoutScheme[1])
