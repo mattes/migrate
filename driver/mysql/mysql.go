@@ -18,7 +18,8 @@ import (
 )
 
 type Driver struct {
-	db *sql.DB
+	db              *sql.DB
+	multiStatements bool
 }
 
 const tableName = "schema_migrations"
@@ -37,6 +38,7 @@ func (driver *Driver) Initialize(url string) error {
 		return err
 	}
 	driver.db = db
+	driver.multiStatements = strings.Contains(urlWithoutScheme[1], "multiStatements=true")
 
 	if err := driver.ensureVersionTableExists(); err != nil {
 		return err
@@ -99,10 +101,34 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 		pipe <- err
 		return
 	}
+	f.Content = bytes.TrimSpace(f.Content)
 
-	// TODO this is not good! unfortunately there is no mysql driver that
-	// supports multiple statements per query.
-	sqlStmts := bytes.Split(f.Content, []byte(";"))
+	if driver.multiStatements && len(f.Content) > 0 {
+		if _, err := tx.Exec(string(f.Content)); err != nil {
+			pipe <- err
+			if err := tx.Rollback(); err != nil {
+				pipe <- err
+			}
+			return
+		}
+	} else {
+		if err := driver.multiStatementsFallback(f.Content, tx); err != nil {
+			pipe <- err
+			if err := tx.Rollback(); err != nil {
+				pipe <- err
+			}
+			return
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		pipe <- err
+		return
+	}
+}
+
+func (driver *Driver) multiStatementsFallback(content []byte, tx *sql.Tx) error {
+	sqlStmts := bytes.Split(content, []byte(";"))
 
 	for _, sqlStmt := range sqlStmts {
 		sqlStmt = bytes.TrimSpace(sqlStmt)
@@ -113,10 +139,7 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 				if isErr {
 					re, err := regexp.Compile(`at line ([0-9]+)$`)
 					if err != nil {
-						pipe <- err
-						if err := tx.Rollback(); err != nil {
-							pipe <- err
-						}
+						return err
 					}
 
 					var lineNo int
@@ -125,9 +148,8 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 						lineNo, err = strconv.Atoi(lineNoRe[1])
 					}
 					if err == nil {
-
 						// get white-space offset
-						// TODO this is broken, because we use sqlStmt instead of f.Content
+						// TODO this is broken, because we use sqlStmt instead of content
 						wsLineOffset := 0
 						b := bufio.NewReader(bytes.NewBuffer(sqlStmt))
 						for {
@@ -146,25 +168,16 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 						message = re.ReplaceAllString(message, fmt.Sprintf("at line %v", lineNo+wsLineOffset))
 
 						errorPart := file.LinesBeforeAndAfter(sqlStmt, lineNo, 5, 5, true)
-						pipe <- errors.New(fmt.Sprintf("%s\n\n%s", message, string(errorPart)))
+						return errors.New(fmt.Sprintf("%s\n\n%s", message, string(errorPart)))
 					} else {
-						pipe <- errors.New(mysqlErr.Error())
+						return errors.New(mysqlErr.Error())
 					}
-
-					if err := tx.Rollback(); err != nil {
-						pipe <- err
-					}
-
-					return
 				}
+				return err
 			}
 		}
 	}
-
-	if err := tx.Commit(); err != nil {
-		pipe <- err
-		return
-	}
+	return nil
 }
 
 func (driver *Driver) Version() (uint64, error) {
