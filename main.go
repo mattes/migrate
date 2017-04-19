@@ -16,6 +16,7 @@ import (
 	_ "github.com/mattes/migrate/driver/crate"
 	_ "github.com/mattes/migrate/driver/mysql"
 	_ "github.com/mattes/migrate/driver/neo4j"
+	_ "github.com/mattes/migrate/driver/oci8"
 	_ "github.com/mattes/migrate/driver/postgres"
 	_ "github.com/mattes/migrate/driver/ql"
 	_ "github.com/mattes/migrate/driver/sqlite3"
