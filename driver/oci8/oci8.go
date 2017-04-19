@@ -34,17 +34,11 @@ func (driver *Driver) Initialize(url string) error {
 	}
 	driver.db = db
 
-	if err := driver.ensureVersionTableExists(); err != nil {
-		return err
-	}
-	return nil
+	return driver.ensureVersionTableExists()
 }
 
 func (driver *Driver) Close() error {
-	if err := driver.db.Close(); err != nil {
-		return err
-	}
-	return nil
+	return driver.db.Close()
 }
 
 func (driver *Driver) ensureVersionTableExists() error {
