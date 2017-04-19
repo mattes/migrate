@@ -48,7 +48,7 @@ func (driver *Driver) Close() error {
 }
 
 func (driver *Driver) ensureVersionTableExists() error {
-	_, err := driver.db.Exec("create table " + tableName + " (version number(19) not null primary key)")
+	_, err := driver.db.Exec("CREATE TABLE " + tableName + " (version NUMBER(19) NOT NULL PRIMARY KEY)")
 	if err != nil {
 		if strings.Contains(err.Error(), "name is already used by an existing object") {
 			return nil
@@ -81,7 +81,7 @@ func (driver *Driver) Migrate(f file.File, pipe chan interface{}) {
 			return
 		}
 	} else if f.Direction == direction.Down {
-		if _, err := tx.Exec("DELETE FROM "+tableName+" WHERE version=:1", f.Version); err != nil {
+		if _, err := tx.Exec("DELETE FROM "+tableName+" WHERE version = :1", f.Version); err != nil {
 			pipe <- err
 			if err := tx.Rollback(); err != nil {
 				pipe <- err
