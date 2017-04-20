@@ -17,7 +17,19 @@ type Driver struct {
 	db *sql.DB
 }
 
-const tableName = "schema_migrations"
+const (
+	tableName = "schema_migrations"
+
+	createTableExistsFunc = `create or replace function table_exists 
+	(name_in in varchar2)
+	return number
+	is 
+	foundnum number := 0;
+	begin
+	select count(0) into foundnum from user_tables where table_name = UPPER(name_in);
+	return foundnum;
+	end;`
+)
 
 func (driver *Driver) Initialize(url string) error {
 	filename := strings.SplitN(url, "oci8://", 2)
@@ -42,14 +54,22 @@ func (driver *Driver) Close() error {
 }
 
 func (driver *Driver) ensureVersionTableExists() error {
-	_, err := driver.db.Exec("CREATE TABLE " + tableName + " (version NUMBER(19) NOT NULL PRIMARY KEY)")
+	// Create a table_exists function in the database.
+	_, err := driver.db.Exec(createTableExistsFunc)
 	if err != nil {
-		if strings.Contains(err.Error(), "name is already used by an existing object") {
-			return nil
-		}
 		return err
 	}
-	return nil
+
+	// Construct the createIfNotExists statement.
+	createIfNotExists := `begin
+	if table_exists('` + tableName + `') = 0 then
+	execute immediate 
+	'CREATE TABLE ` + tableName + `  (version NUMBER(19) NOT NULL PRIMARY KEY)';
+	end if;
+	end;`
+
+	_, err = driver.db.Exec(createIfNotExists)
+	return err
 }
 
 func (driver *Driver) FilenameExtension() string {
