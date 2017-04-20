@@ -46,7 +46,7 @@ func TestMigrate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = db.Exec(executeIfTableExistsPrep("yolo", `DROP TABLE `+tableName))
+	_, err = db.Exec(executeIfTableExistsPrep("yolo", "DROP TABLE "+tableName))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,9 +75,7 @@ func TestMigrate(t *testing.T) {
 			Version:   1,
 			Name:      "foobar",
 			Direction: direction.Down,
-			Content: []byte(`
-				DROP TABLE yolo
-			`),
+			Content:   []byte("DROP TABLE yolo"),
 		},
 		{
 			Path:      "/foobar",
