@@ -27,6 +27,10 @@ func TestMigrate(t *testing.T) {
 
 	dsn := os.Getenv("OCI8_DB_DSN")
 
+	if dsn == "" {
+		t.Fatal("OCI8_DB_DSN environment variable not set")
+	}
+
 	driverUrl := "oci8://" + dsn
 
 	db, err := sql.Open("oci8", dsn)
