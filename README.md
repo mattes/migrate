@@ -7,8 +7,8 @@ __[v3.0 in the making](https://github.com/mattes/migrate/tree/v3.0-prev)__
 [![Build Status](https://travis-ci.org/mattes/migrate.svg?branch=master)](https://travis-ci.org/mattes/migrate)
 [![GoDoc](https://godoc.org/github.com/mattes/migrate?status.svg)](https://godoc.org/github.com/mattes/migrate)
 
-A migration helper written in Go. Use it in your existing Golang code 
-or run commands via the CLI. 
+A migration helper written in Go. Use it in your existing Golang code
+or run commands via the CLI.
 
 ```
 GoCode   import github.com/mattes/migrate/migrate
@@ -33,6 +33,7 @@ __Features__
  * [Ql](driver/ql)
  * [MongoDB](driver/mongodb)
  * [CrateDB](driver/crate)
+ * [FirebirdSQL](driver/firebirdsql)
 
 Need another driver? Just implement the [Driver interface](http://godoc.org/github.com/mattes/migrate/driver#Driver) and open a PR.
 
@@ -114,7 +115,7 @@ The format of migration files looks like this:
 ...
 ```
 
-Why two files? This way you could still do sth like 
+Why two files? This way you could still do sth like
 ``psql -f ./db/migrations/1481574547_initial_plan_to_do_sth.up.sql`` and there is no
 need for any custom markup language to divide up and down migrations. Please note
 that the filename extension depends on the driver.

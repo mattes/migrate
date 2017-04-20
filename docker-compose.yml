@@ -12,6 +12,7 @@ go-test:
     - cassandra
     - crate
     - mongo
+    - firebirdsql
 go-build:
   <<: *go
   command: sh -c 'go get -v && go build -ldflags ''-s'' -o migrater'
@@ -30,3 +31,11 @@ crate:
   image: crate
 mongo:
   image: mongo:3.2.6
+firebirdsql:
+  image: jacobalberty/firebird:2.5-ss
+  ports:
+    - "3050:3050"
+  environment:
+    FIREBIRD_USER: migrateuser
+    FIREBIRD_PASSWORD: migratepass
+    FIREBIRD_DATABASE: migratedb
