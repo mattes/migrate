@@ -32,5 +32,5 @@ func (driver *Driver) Version() (uint64, error) {
 }
 
 func init() {
-	driver.RegisterDriver("bash", &Driver{})
+	driver.RegisterDriver("bash", Driver{})
 }

@@ -178,7 +178,7 @@ func (driver *Driver) Version() (uint64, error) {
 }
 
 func init() {
-	driver.RegisterDriver("cassandra", &Driver{})
+	driver.RegisterDriver("cassandra", Driver{})
 }
 
 // ParseConsistency wraps gocql.ParseConsistency to return an error

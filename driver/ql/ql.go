@@ -126,6 +126,6 @@ func (d *Driver) ensureVersionTableExists() error {
 }
 
 func init() {
-	driver.RegisterDriver("ql+file", &Driver{})
-	driver.RegisterDriver("ql+memory", &Driver{})
+	driver.RegisterDriver("ql+file", Driver{})
+	driver.RegisterDriver("ql+memory", Driver{})
 }
