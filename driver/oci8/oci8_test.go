@@ -28,7 +28,7 @@ func TestMigrate(t *testing.T) {
 	dsn := os.Getenv("OCI8_DB_DSN")
 
 	if dsn == "" {
-		t.Fatal("OCI8_DB_DSN environment variable not set")
+		t.Fatal("OCI8_DB_DSN environment variable not set, format (system/oracle@localhost:49161/xe)")
 	}
 
 	driverUrl := "oci8://" + dsn
