@@ -12,12 +12,15 @@ import (
 )
 
 func executeIfTableExistsPrep(table, query string) string {
-	return fmt.Sprintf(`begin
-	if table_exists('%s') = 1 then
-	execute immediate 
-	'%s';
-	end if;
-	end;`, table, query)
+	return fmt.Sprintf(`DECLARE
+	foundnum NUMBER := 0;
+	BEGIN
+		SELECT count(0) INTO foundnum FROM user_tables WHERE table_name = UPPER('%s');
+
+		IF foundnum = 1 THEN
+			EXECUTE IMMEDIATE '%s';
+		END IF;
+	END;`, table, query)
 }
 
 func TestMigrate(t *testing.T) {
@@ -38,12 +41,6 @@ func TestMigrate(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-
-	// Create a table_exists function in the database.
-	_, err = db.Exec(createTableExistsFunc)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	_, err = db.Exec(executeIfTableExistsPrep("yolo", "DROP TABLE yolo"))
 	if err != nil {

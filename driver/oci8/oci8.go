@@ -4,6 +4,7 @@ package oci8
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/mattes/migrate/driver"
@@ -18,17 +19,16 @@ type Driver struct {
 }
 
 const (
-	tableName = "schema_migrations"
+	tableName          = "schema_migrations"
+	executeIfNotExists = `DECLARE
+	foundnum NUMBER := 0;
+	BEGIN
+		SELECT count(0) INTO foundnum FROM user_tables WHERE table_name = UPPER('%s');
 
-	createTableExistsFunc = `create or replace function table_exists 
-	(name_in in varchar2)
-	return number
-	is 
-	foundnum number := 0;
-	begin
-	select count(0) into foundnum from user_tables where table_name = UPPER(name_in);
-	return foundnum;
-	end;`
+		IF foundnum = 0 THEN
+			EXECUTE IMMEDIATE '%s';
+		END IF;
+	END;`
 )
 
 func (driver *Driver) Initialize(url string) error {
@@ -54,21 +54,14 @@ func (driver *Driver) Close() error {
 }
 
 func (driver *Driver) ensureVersionTableExists() error {
-	// Create a table_exists function in the database.
-	_, err := driver.db.Exec(createTableExistsFunc)
-	if err != nil {
-		return err
-	}
-
 	// Construct the createIfNotExists statement.
-	createIfNotExists := `begin
-	if table_exists('` + tableName + `') = 0 then
-	execute immediate 
-	'CREATE TABLE ` + tableName + `  (version NUMBER(19) NOT NULL PRIMARY KEY)';
-	end if;
-	end;`
+	createIfNotExists := fmt.Sprintf(
+		executeIfNotExists,
+		tableName,
+		"CREATE TABLE "+tableName+"(version NUMBER(19) NOT NULL PRIMARY KEY)",
+	)
 
-	_, err = driver.db.Exec(createIfNotExists)
+	_, err := driver.db.Exec(fmt.Sprintf(createIfNotExists))
 	return err
 }
 
