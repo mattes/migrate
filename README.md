@@ -139,4 +139,4 @@ __Alternatives__
 
 https://bitbucket.org/liamstask/goose, https://github.com/tanel/dbmigrate,  
 https://github.com/BurntSushi/migration, https://github.com/DavidHuie/gomigrate,  
-https://github.com/rubenv/sql-migrate
+https://github.com/rubenv/sql-migrate, https://github.com/wallester/migrate
