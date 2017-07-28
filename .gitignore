@@ -1,3 +1,7 @@
+.*.swp
+.*.swo
+*~
+
 .DS_Store
 cli/build
 cli/cli
