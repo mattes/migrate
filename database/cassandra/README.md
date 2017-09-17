@@ -1,11 +1,11 @@
 # Cassandra
 
-* Drop command will not work on Cassandra 2.X because it rely on
-system_schema table which comes with 3.X
-* Other commands should work properly but are **not tested**
-
+* Drop command will not work on Cassandra 2.X because it rely on system_schema
+  table which comes with 3.X.
+* Other commands should work properly but are **not tested**.
 
 ## Usage
+
 `cassandra://host:port/keyspace?param1=value&param2=value2`
 
 
@@ -16,7 +16,6 @@ system_schema table which comes with 3.X
 | `consistency` | ALL | Migration consistency
 | `protocol` |  | Cassandra protocol version (3 or 4)
 | `timeout` | 1 minute | Migration timeout
-
 
 `timeout` is parsed using [time.ParseDuration(s string)](https://golang.org/pkg/time/#ParseDuration)
 
