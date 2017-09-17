@@ -19,6 +19,20 @@
 
 `timeout` is parsed using [time.ParseDuration(s string)](https://golang.org/pkg/time/#ParseDuration)
 
+## Multistatement migrations
+
+If you would like to execute multiple statements in a single migration, you can
+prepend the migration file with `# migrate:oneLinePerQuery`. Note that each statement must then be situation on a single line. Example migration:
+
+```
+# migrate:oneLinePerQuery
+
+# Demo users for european market:
+INSERT TO users(username) VALUES ("eurodemo");
+
+# Demo users for US market:
+INSERT TO users(username) VALUES ("usdemo");
+```
 
 ## Upgrading from v1
 

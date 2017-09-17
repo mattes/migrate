@@ -1,11 +1,13 @@
 package cassandra
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
 	nurl "net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -64,7 +66,6 @@ func (p *Cassandra) Open(url string) (database.Driver, error) {
 	cluster.Keyspace = u.Path[1:len(u.Path)]
 	cluster.Consistency = gocql.All
 	cluster.Timeout = 1 * time.Minute
-
 
 	// Retrieve query string configuration
 	if len(u.Query().Get("consistency")) > 0 {
@@ -129,13 +130,39 @@ func (p *Cassandra) Run(migration io.Reader) error {
 	if err != nil {
 		return err
 	}
+
 	// run migration
-	query := string(migr[:])
-	if err := p.session.Query(query).Exec(); err != nil {
-		// TODO: cast to Cassandra error and get line number
-		return database.Error{OrigErr: err, Err: "migration failed", Query: migr}
+	query := string(migr)
+	firstLine := strings.Split(query, "\n")[0]
+	if strings.HasPrefix(firstLine, "#") && strings.Contains(firstLine, "migrate:oneLinePerQuery") {
+		scanner := bufio.NewScanner(strings.NewReader(query))
+		scanner.Scan() // Skip first line.
+		for scanner.Scan() {
+			line := strings.Trim(scanner.Text(), " ")
+
+			if strings.HasPrefix(line, "#") || line == "" {
+				continue
+			}
+
+			if err := p.migrate(line); err != nil {
+				return err
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			return database.Error{OrigErr: err, Err: "migration failed", Query: migr}
+		}
+		return nil
 	}
 
+	// Default migration if no options are defined using hashbang.
+	return p.migrate(string(migr))
+}
+
+func (p *Cassandra) migrate(query string) error {
+	if err := p.session.Query(query).Exec(); err != nil {
+		// TODO: cast to Cassandra error and get line number
+		return database.Error{OrigErr: err, Err: "migration failed", Query: []byte(query)}
+	}
 	return nil
 }
 
