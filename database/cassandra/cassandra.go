@@ -1,14 +1,17 @@
 package cassandra
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
 	nurl "net/url"
-	"github.com/gocql/gocql"
-	"time"
-	"github.com/mattes/migrate/database"
 	"strconv"
+	"strings"
+	"time"
+
+	"github.com/gocql/gocql"
+	"github.com/mattes/migrate/database"
 )
 
 func init() {
@@ -20,8 +23,8 @@ var DefaultMigrationsTable = "schema_migrations"
 var dbLocked = false
 
 var (
-	ErrNilConfig = fmt.Errorf("no config")
-	ErrNoKeyspace = fmt.Errorf("no keyspace provided")
+	ErrNilConfig     = fmt.Errorf("no config")
+	ErrNoKeyspace    = fmt.Errorf("no keyspace provided")
 	ErrDatabaseDirty = fmt.Errorf("database is dirty")
 )
 
@@ -35,7 +38,7 @@ type Cassandra struct {
 	isLocked bool
 
 	// Open and WithInstance need to guarantee that config is never nil
-	config   *Config
+	config *Config
 }
 
 func (p *Cassandra) Open(url string) (database.Driver, error) {
@@ -63,7 +66,6 @@ func (p *Cassandra) Open(url string) (database.Driver, error) {
 	cluster.Keyspace = u.Path[1:len(u.Path)]
 	cluster.Consistency = gocql.All
 	cluster.Timeout = 1 * time.Minute
-
 
 	// Retrieve query string configuration
 	if len(u.Query().Get("consistency")) > 0 {
@@ -111,7 +113,7 @@ func (p *Cassandra) Close() error {
 }
 
 func (p *Cassandra) Lock() error {
-	if (dbLocked) {
+	if dbLocked {
 		return database.ErrLocked
 	}
 	dbLocked = true
@@ -128,13 +130,39 @@ func (p *Cassandra) Run(migration io.Reader) error {
 	if err != nil {
 		return err
 	}
+
 	// run migration
-	query := string(migr[:])
-	if err := p.session.Query(query).Exec(); err != nil {
-		// TODO: cast to Cassandra error and get line number
-		return database.Error{OrigErr: err, Err: "migration failed", Query: migr}
+	query := string(migr)
+	firstLine := strings.Split(query, "\n")[0]
+	if strings.HasPrefix(firstLine, "#") && strings.Contains(firstLine, "migrate:oneLinePerQuery") {
+		scanner := bufio.NewScanner(strings.NewReader(query))
+		scanner.Scan() // Skip first line.
+		for scanner.Scan() {
+			line := strings.Trim(scanner.Text(), " ")
+
+			if strings.HasPrefix(line, "#") || line == "" {
+				continue
+			}
+
+			if err := p.migrate(line); err != nil {
+				return err
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			return database.Error{OrigErr: err, Err: "migration failed", Query: migr}
+		}
+		return nil
 	}
 
+	// Default migration if no options are defined using hashbang.
+	return p.migrate(string(migr))
+}
+
+func (p *Cassandra) migrate(query string) error {
+	if err := p.session.Query(query).Exec(); err != nil {
+		// TODO: cast to Cassandra error and get line number
+		return database.Error{OrigErr: err, Err: "migration failed", Query: []byte(query)}
+	}
 	return nil
 }
 
@@ -152,7 +180,6 @@ func (p *Cassandra) SetVersion(version int, dirty bool) error {
 
 	return nil
 }
-
 
 // Return current keyspace version
 func (p *Cassandra) Version() (version int, dirty bool, err error) {
@@ -191,7 +218,6 @@ func (p *Cassandra) Drop() error {
 	return nil
 }
 
-
 // Ensure version table exists
 func (p *Cassandra) ensureVersionTable() error {
 	err := p.session.Query(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (version bigint, dirty boolean, PRIMARY KEY(version))", p.config.MigrationsTable)).Exec()
@@ -203,7 +229,6 @@ func (p *Cassandra) ensureVersionTable() error {
 	}
 	return nil
 }
-
 
 // ParseConsistency wraps gocql.ParseConsistency
 // to return an error instead of a panicking.
