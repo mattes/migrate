@@ -62,7 +62,7 @@ type Migrate struct {
 	// GracefulStop accepts `true` and will stop executing migrations
 	// as soon as possible at a safe break point, so that the database
 	// is not corrupted.
-	GracefulStop   chan bool
+	GracefulStop   <-chan bool
 	isGracefulStop bool
 
 	isLockedMu *sync.Mutex
