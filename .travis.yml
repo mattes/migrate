@@ -2,7 +2,7 @@ language: go
 sudo: required
 
 go:
-  - 1.9
+  - 1.9.1
 
 env:
   - MIGRATE_TEST_CONTAINER_BOOT_DELAY=10
