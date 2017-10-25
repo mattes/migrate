@@ -1,4 +1,4 @@
-// +build go1.9.1
+// +build go1.9
 
 package mysql
 
