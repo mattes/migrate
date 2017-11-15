@@ -11,7 +11,7 @@ import (
 )
 
 var versions = []mt.Version{
-	{Image: "cassandra:3.0.10"},
+	{Image: "cassandra:3.0.10", ENV: []string{"CASSANDRA_BROADCAST_ADDRESS=127.0.0.1"} },
 	{Image: "cassandra:3.0"},
 }
 
@@ -28,6 +28,7 @@ func isReady(i mt.Instance) bool {
 	//cluster.ProtoVersion = 4
 	cluster.Consistency = gocql.All
 	cluster.Timeout = 1 * time.Minute
+	cluster.Authenticator = gocql.PasswordAuthenticator{Username: "cassandra", Password: "cassandra"}
 	p, err := cluster.CreateSession()
 	if err != nil {
 		return false
@@ -43,7 +44,7 @@ func Test(t *testing.T) {
 			p := &Cassandra{}
 			portMap := i.NetworkSettings().Ports
 			port, _ := strconv.Atoi(portMap["9042/tcp"][0].HostPort)
-			addr := fmt.Sprintf("cassandra://%v:%v/testks", i.Host(), port)
+			addr := fmt.Sprintf("cassandra://%v:%v/testks?username=cassandra&password=cassandra", i.Host(), port)
 			d, err := p.Open(addr)
 			if err != nil {
 				t.Fatalf("%v", err)
