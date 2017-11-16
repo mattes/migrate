@@ -4,6 +4,7 @@ REPO_OWNER ?= $(shell cd .. && basename "$$(pwd)")
 
 
 build-cli: clean
+	dep ensure
 	-mkdir ./cli/build
 	cd ./cli && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -a -o build/migrate.linux-amd64 -ldflags='-X main.Version=$(VERSION)' .
 	cd ./cli && CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -a -o build/migrate.darwin-amd64 -ldflags='-X main.Version=$(VERSION)' .
