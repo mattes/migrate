@@ -1,5 +1,3 @@
-// +build google-cloud-storage
-
 package main
 
 import (

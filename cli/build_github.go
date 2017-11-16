@@ -1,5 +1,3 @@
-// +build github
-
 package main
 
 import (

@@ -1,5 +1,3 @@
-SOURCE ?= file go-bindata github aws-s3 google-cloud-storage
-DATABASE ?= postgres mysql redshift cassandra sqlite3 spanner cockroachdb clickhouse
 VERSION ?= $(shell git describe --tags 2>/dev/null | cut -c 2-)
 TEST_FLAGS ?=
 REPO_OWNER ?= $(shell cd .. && basename "$$(pwd)")
@@ -7,9 +5,9 @@ REPO_OWNER ?= $(shell cd .. && basename "$$(pwd)")
 
 build-cli: clean
 	-mkdir ./cli/build
-	cd ./cli && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -a -o build/migrate.linux-amd64 -ldflags='-X main.Version=$(VERSION)' -tags '$(DATABASE) $(SOURCE)' .
-	cd ./cli && CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -a -o build/migrate.darwin-amd64 -ldflags='-X main.Version=$(VERSION)' -tags '$(DATABASE) $(SOURCE)' .
-	cd ./cli && CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -a -o build/migrate.windows-amd64.exe -ldflags='-X main.Version=$(VERSION)' -tags '$(DATABASE) $(SOURCE)' .
+	cd ./cli && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -a -o build/migrate.linux-amd64 -ldflags='-X main.Version=$(VERSION)' .
+	cd ./cli && CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -a -o build/migrate.darwin-amd64 -ldflags='-X main.Version=$(VERSION)' .
+	cd ./cli && CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -a -o build/migrate.windows-amd64.exe -ldflags='-X main.Version=$(VERSION)' .
 	cd ./cli/build && find . -name 'migrate*' | xargs -I{} tar czf {}.tar.gz {}
 	cd ./cli/build && shasum -a 256 * > sha256sum.txt
 	cat ./cli/build/sha256sum.txt
@@ -32,20 +30,7 @@ test:
 
 
 test-with-flags:
-	@echo SOURCE: $(SOURCE) 
-	@echo DATABASE: $(DATABASE)
-
-	@go test $(TEST_FLAGS) .
-	@go test $(TEST_FLAGS) ./cli/...
-	@go test $(TEST_FLAGS) ./testing/...
-
-	@echo -n '$(SOURCE)' | tr -s ' ' '\n' | xargs -I{} go test $(TEST_FLAGS) ./source/{}
-	@go test $(TEST_FLAGS) ./source/testing/...
-	@go test $(TEST_FLAGS) ./source/stub/...
-
-	@echo -n '$(DATABASE)' | tr -s ' ' '\n' | xargs -I{} go test $(TEST_FLAGS) ./database/{}
-	@go test $(TEST_FLAGS) ./database/testing/...
-	@go test $(TEST_FLAGS) ./database/stub/...
+	@go test $(TEST_FLAGS) ./...
 
 
 kill-orphaned-docker-containers:

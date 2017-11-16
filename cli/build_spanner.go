@@ -1,5 +1,3 @@
-// +build spanner
-
 package main
 
 import (

@@ -1,5 +1,3 @@
-// +build cassandra
-
 package main
 
 import (
