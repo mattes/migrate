@@ -63,20 +63,6 @@ deps:
 	-go get -u github.com/fsouza/fake-gcs-server/fakestorage
 
 
-list-external-deps:
-	$(call external_deps,'.')
-	$(call external_deps,'./cli/...')
-	$(call external_deps,'./testing/...')
-
-	$(foreach v, $(SOURCE), $(call external_deps,'./source/$(v)/...'))
-	$(call external_deps,'./source/testing/...')
-	$(call external_deps,'./source/stub/...')
-
-	$(foreach v, $(DATABASE), $(call external_deps,'./database/$(v)/...'))
-	$(call external_deps,'./database/testing/...')
-	$(call external_deps,'./database/stub/...')
-
-
 restore-import-paths:
 	find . -name '*.go' -type f -execdir sed -i '' s%\"github.com/$(REPO_OWNER)/migrate%\"github.com/mattes/migrate%g '{}' \;
 
@@ -106,12 +92,6 @@ open-docs:
 release:
 	git tag v$(V)
 	@read -p "Press enter to confirm and push to origin ..." && git push origin v$(V)
-
-
-define external_deps
-	@echo '-- $(1)';  go list -f '{{join .Deps "\n"}}' $(1) | grep -v github.com/$(REPO_OWNER)/migrate | xargs go list -f '{{if not .Standard}}{{.ImportPath}}{{end}}'
-
-endef
 
 
 .PHONY: build-cli clean test-short test test-with-flags deps html-coverage \
