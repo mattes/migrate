@@ -42,8 +42,9 @@ Options:
   -help            Print usage
 
 Commands:
-  create [-ext E] [-dir D] NAME
+  create [-ext E] [-dir D] [-timestamp unix] NAME
                Create a set of timestamped up/down migrations titled NAME, in directory D with extension E
+               -timestamp accepts "unix" for Unix timestamps (e.g. 1516205943) and "datetime" or "time" for datetime timestamps (e.g. 180117181903), default: "unix"
   goto V       Migrate to version V
   up [N]       Apply all or N up migrations
   down [N]     Apply all or N down migrations
@@ -110,6 +111,7 @@ Commands:
 		createFlagSet := flag.NewFlagSet("create", flag.ExitOnError)
 		extPtr := createFlagSet.String("ext", "", "File extension")
 		dirPtr := createFlagSet.String("dir", "", "Directory to place file in (default: current working directory)")
+		timestampFormatPtr := createFlagSet.String("timestamp", "unix", `Format of a timestamp ("unix" for Unix timestamp, "datetime" or "time" for datetime timestamp, default: "unix")`)
 		createFlagSet.Parse(args)
 
 		if createFlagSet.NArg() == 0 {
@@ -124,7 +126,13 @@ Commands:
 			*dirPtr = strings.Trim(*dirPtr, "/") + "/"
 		}
 
-		timestamp := startTime.Unix()
+		var timestamp interface{}
+
+		if *timestampFormatPtr == "datetime" || *timestampFormatPtr == "time" {
+			timestamp = startTime.Format("060102150405")
+		} else {
+			timestamp = startTime.Unix()
+		}
 
 		createCmd(*dirPtr, timestamp, name, *extPtr)
 
