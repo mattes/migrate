@@ -2,9 +2,7 @@ language: go
 sudo: required
 
 go:
-  - 1.7
-  - 1.8
-  - 1.9
+  - 1.9.1
 
 env:
   - MIGRATE_TEST_CONTAINER_BOOT_DELAY=10
@@ -17,7 +15,7 @@ services:
 install:
   - make deps
   - (cd $GOPATH/src/github.com/docker/docker && git fetch --all --tags --prune && git checkout v17.05.0-ce)
-  - sudo apt-get update && sudo apt-get install docker-ce=17.05.0*
+  - sudo apt-get update && sudo apt-get -y --allow-downgrades install docker-ce=17.05.0*
   - go get github.com/mattn/goveralls 
 
 script:
@@ -38,7 +36,7 @@ deploy:
       secure: EFow50BI448HVb/uQ1Kk2Kq0xzmwIYq3V67YyymXIuqSCodvXEsMiBPUoLrxEknpPEIc67LEQTNdfHBgvyHk6oRINWAfie+7pr5tKrpOTF9ghyxoN1PlO8WKQCqwCvGMBCnc5ur5rvzp0bqfpV2rs5q9/nngy3kBuEvs12V7iho=
     skip_cleanup: true
     on:
-      go: 1.8
+      go: 1.9
       repo: mattes/migrate
       tags: true
     file:
@@ -56,7 +54,7 @@ deploy:
     package_glob: '*.deb'
     skip_cleanup: true
     on:
-      go: 1.8
+      go: 1.9
       repo: mattes/migrate
       tags: true
 
