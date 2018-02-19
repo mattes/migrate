@@ -7,8 +7,7 @@ import (
 	nurl "net/url"
 	"strings"
 
-	"database/sql"
-	_ "gopkg.in/cq.v1"
+	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
 	"github.com/mattes/migrate"
 	"github.com/mattes/migrate/database"
 )
@@ -28,19 +27,15 @@ type Config struct {
 }
 
 type Neo4j struct {
-	db       *sql.DB
-	tx       *sql.Tx
+	db       bolt.Conn
+	tx       bolt.Tx
 	isLocked bool
 	config   *Config
 }
 
-func WithInstance(instance *sql.DB, config *Config) (database.Driver, error) {
-	if config == nil {
+func WithInstance(instance bolt.Conn, config *Config) (database.Driver, error) {
+	if instance == nil || config == nil {
 		return nil, ErrNilConfig
-	}
-
-	if err := instance.Ping(); err != nil {
-		return nil, err
 	}
 
 	if len(config.MigrationsLabel) == 0 {
@@ -53,36 +48,6 @@ func WithInstance(instance *sql.DB, config *Config) (database.Driver, error) {
 	}
 
 	return mx, nil
-}
-
-func (m *Neo4j) Open(url string) (database.Driver, error) {
-	purl, err := nurl.Parse(url)
-	if err != nil {
-		return nil, err
-	}
-
-	db, err := sql.Open("neo4j-cypher", migrate.FilterCustomQuery(purl).String())
-	if err != nil {
-		return nil, err
-	}
-
-	migrationsLabel := purl.Query().Get("x-migrations-label")
-	if len(migrationsLabel) == 0 {
-		migrationsLabel = DefaultMigrationsLabel
-	}
-
-	mx, err := WithInstance(db, &Config{
-		MigrationsLabel: migrationsLabel,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return mx, nil
-}
-
-func (m *Neo4j) Close() error {
-	return m.db.Close()
 }
 
 func (m *Neo4j) Lock() error {
@@ -134,14 +99,14 @@ func (m *Neo4j) Run(migration io.Reader) error {
 			continue
 		}
 
-		stmt, err := m.db.Prepare(query)
+		stmt, err := m.db.PrepareNeo(query)
 		if err != nil {
 			m.Rollback()
 			return &database.Error{OrigErr: err, Query: []byte(query)}
 		}
 		defer stmt.Close()
 
-		if _, err := stmt.Exec(); err != nil {
+		if _, err := stmt.ExecNeo(nil); err != nil {
 			m.Rollback()
 			return &database.Error{OrigErr: err, Err: "migration failed", Query: []byte(query)}
 		}
@@ -153,41 +118,41 @@ func (m *Neo4j) Run(migration io.Reader) error {
 func (m *Neo4j) SetVersion(version int, dirty bool) error {
 
 	query := "MATCH (m:" + m.config.MigrationsLabel + ") delete m"
-	stmt, err := m.db.Prepare(query)
+	stmt, err := m.db.PrepareNeo(query)
 	if err != nil {
 		m.Rollback()
 		return &database.Error{OrigErr: err, Query: []byte(query)}
 	}
 	defer stmt.Close()
 
-	if _, err := stmt.Exec(version); err != nil {
+	if _, err := stmt.ExecNeo(nil); err != nil {
 		m.Rollback()
 		return &database.Error{OrigErr: err, Query: []byte(query)}
 	}
 
 	if version >= 0 {
 
-		query := "MATCH (m:" + m.config.MigrationsLabel + ") where m.version={0} delete m"
-		stmt, err := m.db.Prepare(query)
+		query := "MATCH (m:" + m.config.MigrationsLabel + ") where m.version={version} delete m"
+		stmt, err := m.db.PrepareNeo(query)
 		if err != nil {
 			m.Rollback()
 			return &database.Error{OrigErr: err, Query: []byte(query)}
 		}
 		defer stmt.Close()
 
-		if _, err := stmt.Exec(version); err != nil {
+		if _, err := stmt.ExecNeo(map[string]interface{}{"version": version}); err != nil {
 			m.Rollback()
 			return &database.Error{OrigErr: err, Query: []byte(query)}
 		}
 
-		query = "CREATE (:" + m.config.MigrationsLabel + " {version:{0}, dirty:{1}})"
-		stmt, err = m.db.Prepare(query)
+		query = "CREATE (:" + m.config.MigrationsLabel + " {version:{version}, dirty:{dirty}})"
+		stmt, err = m.db.PrepareNeo(query)
 		if err != nil {
 			m.Rollback()
 			return &database.Error{OrigErr: err, Query: []byte(query)}
 		}
 		defer stmt.Close()
-		if _, err := stmt.Exec(version, dirty); err != nil {
+		if _, err := stmt.ExecNeo(map[string]interface{}{"version": version, "dirty": dirty}); err != nil {
 			m.Rollback()
 			return &database.Error{OrigErr: err, Query: []byte(query)}
 		}
@@ -198,33 +163,33 @@ func (m *Neo4j) SetVersion(version int, dirty bool) error {
 
 func (m *Neo4j) Version() (version int, dirty bool, err error) {
 	query := "MATCH (m:" + m.config.MigrationsLabel + ") return m.version, m.dirty ORDER BY m.version LIMIT 1"
-	stmt, err := m.db.Prepare(query)
+	stmt, err := m.db.PrepareNeo(query)
 	if err != nil {
 		return 0, false, &database.Error{OrigErr: err, Query: []byte(query)}
 	}
 	defer stmt.Close()
-	err = stmt.QueryRow(query).Scan(&version, &dirty)
-	switch {
-	case err == sql.ErrNoRows:
-		return database.NilVersion, false, nil
-
-	case err != nil:
+	rows, err := stmt.QueryNeo(nil)
+	data, _, err := rows.NextNeo()
+	if err != nil {
+		if err == io.EOF {
+			return database.NilVersion, false, nil
+		}
 		return 0, false, &database.Error{OrigErr: err, Query: []byte(query)}
-
-	default:
-		return int(version), dirty, nil
 	}
+
+	return data[0].(int), data[1].(bool), nil
+
 }
 
 func (m *Neo4j) Drop() error {
 	// select all tables
 	query := "MATCH (m:" + m.config.MigrationsLabel + ") delete m"
-	stmt, err := m.db.Prepare(query)
+	stmt, err := m.db.PrepareNeo(query)
 	if err != nil {
 		return &database.Error{OrigErr: err, Query: []byte(query)}
 	}
 	defer stmt.Close()
-	_, err = stmt.Exec()
+	_, err = stmt.ExecNeo(nil)
 	if err != nil {
 		return &database.Error{OrigErr: err, Query: []byte(query)}
 	}
