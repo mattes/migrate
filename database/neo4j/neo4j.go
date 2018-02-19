@@ -56,7 +56,7 @@ func (m *Neo4j) Open(url string) (database.Driver, error) {
 	}
 	defer conn.Close()
 
-	driver, err := WithInstance(conn, &Config{})
+	driver, err := WithInstance(&conn, &Config{})
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func (m *Neo4j) Lock() error {
 	if err != nil {
 		return &database.Error{OrigErr: err, Err: "transaction start failed"}
 	}
-	m.tx = tx
+	m.tx = &tx
 	m.isLocked = true
 	return nil
 }
