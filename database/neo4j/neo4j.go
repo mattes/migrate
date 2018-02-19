@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	nurl "net/url"
 	"strings"
 
 	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
-	"github.com/mattes/migrate"
 	"github.com/mattes/migrate/database"
 )
 
@@ -48,6 +46,25 @@ func WithInstance(instance bolt.Conn, config *Config) (database.Driver, error) {
 	}
 
 	return mx, nil
+}
+
+func (m *Neo4j) Open(url string) (database.Driver, error) {
+	boltDriver := bolt.NewDriver()
+	conn, err := boltDriver.OpenNeo(url)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	driver, err := WithInstance(conn, &Config{})
+	if err != nil {
+		return nil, err
+	}
+	return driver, nil
+}
+
+func (m *Neo4j) Close() error {
+	return m.db.Close()
 }
 
 func (m *Neo4j) Lock() error {
