@@ -75,7 +75,7 @@ func (m *Neo4j) Lock() error {
 	if err != nil {
 		return &database.Error{OrigErr: err, Err: "transaction start failed"}
 	}
-	m.tx = &tx
+	m.tx = tx
 	m.isLocked = true
 	return nil
 }
