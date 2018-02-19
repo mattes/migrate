@@ -127,6 +127,7 @@ func (m *Neo4j) Run(migration io.Reader) error {
 			m.Rollback()
 			return &database.Error{OrigErr: err, Err: "migration failed", Query: []byte(query)}
 		}
+		stmt.Close()
 	}
 
 	return nil
@@ -135,44 +136,47 @@ func (m *Neo4j) Run(migration io.Reader) error {
 func (m *Neo4j) SetVersion(version int, dirty bool) error {
 
 	query := "MATCH (m:" + m.config.MigrationsLabel + ") delete m"
-	stmt, err := m.db.PrepareNeo(query)
+	stmt1, err := m.db.PrepareNeo(query)
 	if err != nil {
 		m.Rollback()
 		return &database.Error{OrigErr: err, Query: []byte(query)}
 	}
-	defer stmt.Close()
+	defer stmt1.Close()
 
-	if _, err := stmt.ExecNeo(nil); err != nil {
+	if _, err := stmt1.ExecNeo(map[string]interface{}{}); err != nil {
 		m.Rollback()
 		return &database.Error{OrigErr: err, Query: []byte(query)}
 	}
+	stmt1.Close()
 
 	if version >= 0 {
 
 		query := "MATCH (m:" + m.config.MigrationsLabel + ") where m.version={version} delete m"
-		stmt, err := m.db.PrepareNeo(query)
+		stmt2, err := m.db.PrepareNeo(query)
 		if err != nil {
 			m.Rollback()
 			return &database.Error{OrigErr: err, Query: []byte(query)}
 		}
-		defer stmt.Close()
+		defer stmt2.Close()
 
-		if _, err := stmt.ExecNeo(map[string]interface{}{"version": version}); err != nil {
+		if _, err := stmt2.ExecNeo(map[string]interface{}{"version": version}); err != nil {
 			m.Rollback()
 			return &database.Error{OrigErr: err, Query: []byte(query)}
 		}
+		stmt2.Close()
 
 		query = "CREATE (:" + m.config.MigrationsLabel + " {version:{version}, dirty:{dirty}})"
-		stmt, err = m.db.PrepareNeo(query)
+		stmt3, err := m.db.PrepareNeo(query)
 		if err != nil {
 			m.Rollback()
 			return &database.Error{OrigErr: err, Query: []byte(query)}
 		}
-		defer stmt.Close()
-		if _, err := stmt.ExecNeo(map[string]interface{}{"version": version, "dirty": dirty}); err != nil {
+		defer stmt3.Close()
+		if _, err := stmt3.ExecNeo(map[string]interface{}{"version": version, "dirty": dirty}); err != nil {
 			m.Rollback()
 			return &database.Error{OrigErr: err, Query: []byte(query)}
 		}
+		stmt3.Close()
 	}
 
 	return nil
