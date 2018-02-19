@@ -101,7 +101,7 @@ func (m *Neo4j) Lock() error {
 func (m *Neo4j) Unlock() (err error) {
 	m.isLocked = false
 	if m.tx != nil {
-		if err := m.tx.Commit(); err != nil {
+		if e := m.tx.Commit(); e != nil {
 			err = &database.Error{OrigErr: err, Err: "transaction commit failed"}
 		}
 		m.tx = nil
@@ -111,7 +111,7 @@ func (m *Neo4j) Unlock() (err error) {
 
 func (m *Neo4j) Rollback() (err error) {
 	if m.tx != nil {
-		if err := m.tx.Rollback(); err != nil {
+		if e := m.tx.Rollback(); e != nil {
 			err = &database.Error{OrigErr: err, Err: "transaction rollback failed"}
 		}
 		m.tx = nil
