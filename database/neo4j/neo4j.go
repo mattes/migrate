@@ -127,6 +127,7 @@ func (m *Neo4j) Run(migration io.Reader) error {
 			m.Rollback()
 			return &database.Error{OrigErr: err, Err: "migration failed", Query: []byte(query)}
 		}
+		// have to close statements in loop
 		stmt.Close()
 	}
 
@@ -135,55 +136,60 @@ func (m *Neo4j) Run(migration io.Reader) error {
 
 func (m *Neo4j) SetVersion(version int, dirty bool) error {
 
-	query := "MATCH (m:" + m.config.MigrationsLabel + ") delete m"
-	stmt1, err := m.db.PrepareNeo(query)
+	if version >= 0 {
+
+		v, _, err := m.Version()
+		if err != nil {
+			m.Rollback()
+			return &database.Error{OrigErr: err, Err: "Could not get version"}
+		}
+
+		if v == version {
+			// update
+			m.updateVersion(version, dirty)
+		} else {
+			// create
+			m.createVersion(version, dirty)
+		}
+	}
+
+	return nil
+}
+func (m *Neo4j) updateVersion(version int, dirty bool) error {
+
+	query := "MATCH (m:" + m.config.MigrationsLabel + ") where m.version={version} SET m.dirty = {dirty}"
+	stmt, err := m.db.PrepareNeo(query)
 	if err != nil {
 		m.Rollback()
 		return &database.Error{OrigErr: err, Query: []byte(query)}
 	}
-	defer stmt1.Close()
-
-	if _, err := stmt1.ExecNeo(map[string]interface{}{}); err != nil {
+	defer stmt.Close()
+	if _, err := stmt.ExecNeo(map[string]interface{}{"version": version, "dirty": dirty}); err != nil {
 		m.Rollback()
 		return &database.Error{OrigErr: err, Query: []byte(query)}
 	}
-	stmt1.Close()
 
-	if version >= 0 {
+	return nil
+}
+func (m *Neo4j) createVersion(version int, dirty bool) error {
 
-		query := "MATCH (m:" + m.config.MigrationsLabel + ") where m.version={version} delete m"
-		stmt2, err := m.db.PrepareNeo(query)
-		if err != nil {
-			m.Rollback()
-			return &database.Error{OrigErr: err, Query: []byte(query)}
-		}
-		defer stmt2.Close()
-
-		if _, err := stmt2.ExecNeo(map[string]interface{}{"version": version}); err != nil {
-			m.Rollback()
-			return &database.Error{OrigErr: err, Query: []byte(query)}
-		}
-		stmt2.Close()
-
-		query = "CREATE (:" + m.config.MigrationsLabel + " {version:{version}, dirty:{dirty}})"
-		stmt3, err := m.db.PrepareNeo(query)
-		if err != nil {
-			m.Rollback()
-			return &database.Error{OrigErr: err, Query: []byte(query)}
-		}
-		defer stmt3.Close()
-		if _, err := stmt3.ExecNeo(map[string]interface{}{"version": version, "dirty": dirty}); err != nil {
-			m.Rollback()
-			return &database.Error{OrigErr: err, Query: []byte(query)}
-		}
-		stmt3.Close()
+	query := "CREATE (:" + m.config.MigrationsLabel + " {version:{version}, dirty:{dirty}})"
+	stmt, err := m.db.PrepareNeo(query)
+	if err != nil {
+		m.Rollback()
+		return &database.Error{OrigErr: err, Query: []byte(query)}
+	}
+	defer stmt.Close()
+	if _, err := stmt.ExecNeo(map[string]interface{}{"version": version, "dirty": dirty}); err != nil {
+		m.Rollback()
+		return &database.Error{OrigErr: err, Query: []byte(query)}
 	}
 
 	return nil
 }
 
 func (m *Neo4j) Version() (version int, dirty bool, err error) {
-	query := "MATCH (m:" + m.config.MigrationsLabel + ") return m.version, m.dirty ORDER BY m.version LIMIT 1"
+	query := "MATCH (m:" + m.config.MigrationsLabel + ") return m.version, m.dirty ORDER BY m.version DESC LIMIT 1"
 	stmt, err := m.db.PrepareNeo(query)
 	if err != nil {
 		return 0, false, &database.Error{OrigErr: err, Query: []byte(query)}
@@ -198,8 +204,7 @@ func (m *Neo4j) Version() (version int, dirty bool, err error) {
 		return 0, false, &database.Error{OrigErr: err, Query: []byte(query)}
 	}
 
-	return data[0].(int), data[1].(bool), nil
-
+	return int(data[0].(int64)), data[1].(bool), nil
 }
 
 func (m *Neo4j) Drop() error {

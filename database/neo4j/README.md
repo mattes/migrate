@@ -1,10 +1,6 @@
 # Neo4J
 
-`http://user:password@host:port?query`
-
-| URL Query  | WithInstance Config | Description |
-|------------|---------------------|-------------|
-| `x-migrations-label` | `SchemaMigration` | Name of the migrations node |
+`http://user:password@host:port`
 
 ## Use with existing client
 
@@ -14,20 +10,21 @@ import (
 	"log"
 	"github.com/mattes/migrate"
 	"github.com/mattes/migrate/database/neo4j"
-	"database/sql"
-
 	_ "github.com/mattes/migrate/source/file"
-	_ "gopkg.in/cq.v1"
+	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
 )
 
 func main() {
 
-	db, err := sql.Open("neo4j-cypher", "http://neo4j:password@localhost:7474")
+	boltDriver := bolt.NewDriver()
+	conn, err := boltDriver.OpenNeo("bolt://neo4j:root@localhost:7687")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
+	defer conn.Close()
 
-	driver, err := neo4j.WithInstance(db, &neo4j.Config{})
+
+	driver, err := neo4j.WithInstance(conn, &neo4j.Config{})
 	if err != nil {
 		panic(err)
 	}
