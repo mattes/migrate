@@ -216,7 +216,7 @@ func (m *Mysql) SetVersion(version int, dirty bool) error {
 		return &database.Error{OrigErr: err, Err: "transaction start failed"}
 	}
 
-	query := "TRUNCATE `" + m.config.MigrationsTable + "`"
+	query := "DELETE FROM `" + m.config.MigrationsTable + "`"
 	if _, err := m.db.Exec(query); err != nil {
 		return &database.Error{OrigErr: err, Query: []byte(query)}
 	}
