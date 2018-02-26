@@ -10,10 +10,10 @@ import (
 	"os"
 
 	"github.com/mattes/migrate/source"
-	"github.com/src-d/go-git/plumbing/transport"
-	"gopkg.in/src-d/go-billy.v3/memfs"
+	"gopkg.in/src-d/go-billy.v4/memfs"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport"
 	githttp "gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 	gitssh "gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 	"gopkg.in/src-d/go-git.v4/storage/memory"
@@ -217,7 +217,7 @@ func NewRepository(url string) (*git.Repository, string, error) {
 
 		gitURL, err = m.URL()
 		if m.User != "" {
-			gitAuth = githttp.NewBasicAuth(m.User, m.Password)
+			gitAuth = &githttp.BasicAuth{Username: m.User, Password: m.Password}
 		}
 	}
 
