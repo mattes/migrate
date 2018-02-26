@@ -38,7 +38,8 @@ var (
 )
 
 func init() {
-	source.Register("git", &Git{})
+	source.Register("ssh", &Git{})
+	source.Register("https", &Git{})
 }
 
 // Git is the underlying struct used by the source driver.
