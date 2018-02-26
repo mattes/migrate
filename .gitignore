@@ -4,3 +4,5 @@ cli/cli
 cli/migrate
 .coverage
 .godoc.pid
+.idea
+cover.out
