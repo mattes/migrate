@@ -193,16 +193,19 @@ func NewRepository(url string) (*git.Repository, string, error) {
 
 		gitURL, err = m.URL()
 
-		for _, cert := range m.Certs {
+		for i, cert := range m.Certs {
 
 			b, err := ioutil.ReadFile(cert)
 			if err != nil {
+				if i+1 == len(m.Certs){
+					return nil, "", errNoValidCerts
+				}
 				continue
 			}
 
 			signer, err := ssh.ParsePrivateKey(b)
 			if err != nil {
-				continue
+				return nil, "", err
 			}
 
 			gitAuth = &gitssh.PublicKeys{
