@@ -136,41 +136,18 @@ func (m *Neo4j) Run(migration io.Reader) error {
 
 func (m *Neo4j) SetVersion(version int, dirty bool) error {
 
+	if err := m.Drop(); err != nil {
+		m.Rollback()
+		return &database.Error{OrigErr: err, Err: "Could not delete migration nodes"}
+	}
+
 	if version >= 0 {
-
-		v, _, err := m.Version()
-		if err != nil {
-			m.Rollback()
-			return &database.Error{OrigErr: err, Err: "Could not get version"}
-		}
-
-		if v == version {
-			// update
-			m.updateVersion(version, dirty)
-		} else {
-			// create
-			m.createVersion(version, dirty)
-		}
+		m.createVersion(version, dirty)
 	}
 
 	return nil
 }
-func (m *Neo4j) updateVersion(version int, dirty bool) error {
 
-	query := "MATCH (m:" + m.config.MigrationsLabel + ") where m.version={version} SET m.dirty = {dirty}"
-	stmt, err := m.db.PrepareNeo(query)
-	if err != nil {
-		m.Rollback()
-		return &database.Error{OrigErr: err, Query: []byte(query)}
-	}
-	defer stmt.Close()
-	if _, err := stmt.ExecNeo(map[string]interface{}{"version": version, "dirty": dirty}); err != nil {
-		m.Rollback()
-		return &database.Error{OrigErr: err, Query: []byte(query)}
-	}
-
-	return nil
-}
 func (m *Neo4j) createVersion(version int, dirty bool) error {
 
 	query := "CREATE (:" + m.config.MigrationsLabel + " {version:{version}, dirty:{dirty}})"
@@ -208,7 +185,7 @@ func (m *Neo4j) Version() (version int, dirty bool, err error) {
 }
 
 func (m *Neo4j) Drop() error {
-	// select all tables
+	// delete all migration nodes
 	query := "MATCH (m:" + m.config.MigrationsLabel + ") delete m"
 	stmt, err := m.db.PrepareNeo(query)
 	if err != nil {
