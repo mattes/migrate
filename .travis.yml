@@ -9,16 +9,19 @@ go:
 env:
   - MIGRATE_TEST_CONTAINER_BOOT_DELAY=10
 
-# TODO: https://docs.docker.com/engine/installation/linux/ubuntu/    
+# TODO: https://docs.docker.com/engine/installation/linux/ubuntu/
 # pre-provision with travis docker setup and pin down docker version in install step
 services:
-  - docker 
+  - docker
+
+addons:
+  apt:
+    packages:
+      - docker-ce
 
 install:
   - make deps
-  - (cd $GOPATH/src/github.com/docker/docker && git fetch --all --tags --prune && git checkout v17.05.0-ce)
-  - sudo apt-get update && sudo apt-get install docker-ce=17.05.0*
-  - go get github.com/mattn/goveralls 
+  - go get github.com/mattn/goveralls
 
 script:
   - make test
@@ -29,7 +32,7 @@ after_success:
 
 before_deploy:
   - make build-cli
-  - gem install --no-ri --no-rdoc fpm 
+  - gem install --no-ri --no-rdoc fpm
   - fpm -s dir -t deb -n migrate -v "$(git describe --tags 2>/dev/null | cut -c 2-)" --license MIT -m matthias.kadenbach@gmail.com --url https://github.com/mattes/migrate --description='Database migrations' -a amd64 -p migrate.$(git describe --tags 2>/dev/null | cut -c 2-).deb --deb-no-default-config-files -f -C cli/build migrate.linux-amd64=/usr/bin/migrate
 
 deploy:
@@ -59,4 +62,3 @@ deploy:
       go: 1.8
       repo: mattes/migrate
       tags: true
-
