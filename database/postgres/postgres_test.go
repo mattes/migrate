@@ -19,7 +19,6 @@ var versions = []mt.Version{
 	{Image: "postgres:9.5"},
 	{Image: "postgres:9.4"},
 	{Image: "postgres:9.3"},
-	{Image: "postgres:9.2"},
 }
 
 func isReady(i mt.Instance) bool {
