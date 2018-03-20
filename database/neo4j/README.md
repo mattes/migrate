@@ -24,7 +24,7 @@ func main() {
 	defer conn.Close()
 
 
-	driver, err := neo4j.WithInstance(conn, &neo4j.Config{})
+	driver, err := neo4j.WithInstance(conn, &neo4j.Config{MigrationsLabel: "DataMigration", UseTransactions: true})
 	if err != nil {
 		panic(err)
 	}

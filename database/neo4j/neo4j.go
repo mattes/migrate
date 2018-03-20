@@ -22,6 +22,7 @@ var (
 
 type Config struct {
 	MigrationsLabel string
+	UseTransactions bool
 }
 
 type Neo4j struct {
@@ -71,11 +72,13 @@ func (m *Neo4j) Lock() error {
 	if m.isLocked {
 		return database.ErrLocked
 	}
-	tx, err := m.db.Begin()
-	if err != nil {
-		return &database.Error{OrigErr: err, Err: "transaction start failed"}
+	if m.config.UseTransactions {
+		tx, err := m.db.Begin()
+		if err != nil {
+			return &database.Error{OrigErr: err, Err: "transaction start failed"}
+		}
+		m.tx = tx
 	}
-	m.tx = tx
 	m.isLocked = true
 	return nil
 }
@@ -142,7 +145,7 @@ func (m *Neo4j) SetVersion(version int, dirty bool) error {
 	}
 
 	if version >= 0 {
-		m.createVersion(version, dirty)
+		return m.createVersion(version, dirty)
 	}
 
 	return nil
