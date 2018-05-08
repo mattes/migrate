@@ -23,10 +23,11 @@ func init() {
 var DefaultMigrationsTable = "schema_migrations"
 
 var (
-	ErrDatabaseDirty  = fmt.Errorf("database is dirty")
-	ErrNilConfig      = fmt.Errorf("no config")
-	ErrNoDatabaseName = fmt.Errorf("no database name")
-	ErrAppendPEM      = fmt.Errorf("failed to append PEM")
+	ErrDatabaseDirty             = fmt.Errorf("database is dirty")
+	ErrNilConfig                 = fmt.Errorf("no config")
+	ErrNoDatabaseName            = fmt.Errorf("no database name")
+	ErrAppendPEM                 = fmt.Errorf("failed to append PEM")
+	ErrDatabaseCouldNotBeCreated = fmt.Errorf("Database could not be created")
 )
 
 type Config struct {
@@ -89,6 +90,10 @@ func (m *Mysql) Open(url string) (database.Driver, error) {
 	q.Set("multiStatements", "true")
 	purl.RawQuery = q.Encode()
 
+	if err = ensureDatabaseExist(purl); err != nil {
+		return nil, err
+	}
+
 	db, err := sql.Open("mysql", strings.Replace(
 		migrate.FilterCustomQuery(purl).String(), "mysql://", "", 1))
 	if err != nil {
@@ -145,6 +150,28 @@ func (m *Mysql) Open(url string) (database.Driver, error) {
 	}
 
 	return mx, nil
+}
+
+func ensureDatabaseExist(url *nurl.URL) error {
+	urlCopy, _ := nurl.Parse(url.String()) // Copy
+
+	database := urlCopy.Path[1:]
+	urlCopy.Path = "/"
+
+	dbstring := strings.Replace(migrate.FilterCustomQuery(urlCopy).String(), "mysql://", "", 1)
+	db, err := sql.Open("mysql", dbstring)
+	if err != nil {
+		return err
+	}
+
+	// Unfortunately placeholder parameters did not work here, so there might
+	// be a risk of SQL injection here if database URL isn't properly
+	// saniticed.
+	if _, err = db.Exec("CREATE DATABASE IF NOT EXISTS " + database); err != nil {
+		return err
+	}
+
+	return db.Close()
 }
 
 func (m *Mysql) Close() error {
