@@ -1,5 +1,3 @@
-// +build ql
-
 package main
 
 import (

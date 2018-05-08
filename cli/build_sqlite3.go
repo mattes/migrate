@@ -1,5 +1,3 @@
-// +build sqlite3
-
 package main
 
 import (

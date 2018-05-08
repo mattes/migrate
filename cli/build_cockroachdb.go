@@ -1,5 +1,3 @@
-// +build cockroachdb
-
 package main
 
 import (

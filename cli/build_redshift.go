@@ -1,5 +1,3 @@
-// +build redshift
-
 package main
 
 import (

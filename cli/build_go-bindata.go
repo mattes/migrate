@@ -1,5 +1,3 @@
-// +build go-bindata
-
 package main
 
 import (

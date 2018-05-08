@@ -1,5 +1,3 @@
-// +build clickhouse
-
 package main
 
 import (

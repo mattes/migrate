@@ -1,5 +1,3 @@
-// +build aws-s3
-
 package main
 
 import (
