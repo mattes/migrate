@@ -1,6 +1,6 @@
 # migrate
 
-__Database migrations written in Go. Use as [CLI](#cli-usage) or import as [library](#use-in-your-go-project).__
+Database migrations written in Go. Use as CLI or import as library.
 
 # DEPRECATED
 
