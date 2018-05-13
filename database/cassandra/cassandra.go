@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	nurl "net/url"
 	"strconv"
+  "strings"
+	"regexp"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -137,10 +139,26 @@ func (p *Cassandra) Run(migration io.Reader) error {
 		return err
 	}
 	// run migration
-	query := string(migr[:])
-	if err := p.session.Query(query).Exec(); err != nil {
-		// TODO: cast to Cassandra error and get line number
-		return database.Error{OrigErr: err, Err: "migration failed", Query: migr}
+	var isPreparedStatement = regexp.MustCompile(`(?mi)^BEGIN BATCH`)
+	var splitRegex = regexp.MustCompile(`(?m);\s*$`)
+
+	queries := string(migr[:])
+	requests := []string{queries}
+	if isPreparedStatement.MatchString(queries) != true {
+		requests = splitRegex.Split(queries, -1)
+	}
+
+	for i, query := range requests {
+		if strings.TrimSpace(query) == "" {
+			continue
+		}
+		if i < len(requests) - 1 {
+			query += ";"
+		}
+		if err := p.session.Query(query).Exec(); err != nil {
+			// TODO: cast to Cassandra error and get line number
+			return database.Error{OrigErr: err, Err: "migration failed", Query: migr}
+		}
 	}
 
 	return nil
