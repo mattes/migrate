@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	nurl "net/url"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
+	nurl "net/url"
 
 	"github.com/gocql/gocql"
 	"github.com/mattes/migrate/database"
@@ -136,11 +138,19 @@ func (p *Cassandra) Run(migration io.Reader) error {
 	if err != nil {
 		return err
 	}
-	// run migration
+	// split multiple statements and run migration
 	query := string(migr[:])
-	if err := p.session.Query(query).Exec(); err != nil {
-		// TODO: cast to Cassandra error and get line number
-		return database.Error{OrigErr: err, Err: "migration failed", Query: migr}
+	matches := regexp.MustCompile(`(?m:;$)`).Split(query, -1)
+	for _, match := range matches {
+		trimmedMatch := strings.Trim(match, " \t\r\n")
+		if len(trimmedMatch) == 0 {
+			continue
+		}
+
+		if err := p.session.Query(trimmedMatch).Exec(); err != nil {
+			// TODO: cast to Cassandra error and get line number
+			return database.Error{OrigErr: err, Err: "migration failed", Query: migr}
+		}
 	}
 
 	return nil
