@@ -8,7 +8,7 @@ import (
 	"fmt"
 )
 
-func createCmd(dir string, timestamp int64, name string, ext string) {
+func createCmd(dir string, timestamp interface{}, name string, ext string) {
 	base := fmt.Sprintf("%v%v_%v.", dir, timestamp, name)
 	os.MkdirAll(dir, os.ModePerm)
 	createFile(base + "up" + ext)
