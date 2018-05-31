@@ -44,17 +44,17 @@ func Test(t *testing.T) {
 			addr := fmt.Sprintf("mysql://root:root@tcp(%v:%v)/public", i.Host(), i.Port())
 			d, err := p.Open(addr)
 			if err != nil {
-				t.Fatalf("%v", err)
+				t.Fatalf("%#v", err)
 			}
 			dt.Test(t, d, []byte("SELECT 1"))
 
 			// check ensureVersionTable
 			if err := d.(*Mysql).ensureVersionTable(); err != nil {
-				t.Fatal(err)
+				t.Fatalf("%#v", err)
 			}
 			// check again
 			if err := d.(*Mysql).ensureVersionTable(); err != nil {
-				t.Fatal(err)
+				t.Fatalf("%#v", err)
 			}
 		})
 }
