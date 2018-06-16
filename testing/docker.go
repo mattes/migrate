@@ -6,16 +6,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	dockertypes "github.com/docker/docker/api/types"
+	dockercontainer "github.com/docker/docker/api/types/container"
+	dockernetwork "github.com/docker/docker/api/types/network"
+	dockerclient "github.com/docker/docker/client"
 	"io"
 	"math/rand"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
-	dockertypes "github.com/docker/docker/api/types"
-	dockercontainer "github.com/docker/docker/api/types/container"
-	dockernetwork "github.com/docker/docker/api/types/network"
-	dockerclient "github.com/docker/docker/client"
 )
 
 func NewDockerContainer(t testing.TB, image string, env []string, cmd []string) (*DockerContainer, error) {
@@ -33,7 +33,7 @@ func NewDockerContainer(t testing.TB, image string, env []string, cmd []string) 
 		client:    c,
 		ImageName: image,
 		ENV:       env,
-		Cmd: 	   cmd,
+		Cmd:       cmd,
 	}
 
 	if err := contr.PullImage(); err != nil {
