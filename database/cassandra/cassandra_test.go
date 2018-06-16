@@ -2,12 +2,12 @@ package cassandra
 
 import (
 	"fmt"
-	"testing"
+	"github.com/gocql/gocql"
 	dt "github.com/mattes/migrate/database/testing"
 	mt "github.com/mattes/migrate/testing"
-	"github.com/gocql/gocql"
-	"time"
 	"strconv"
+	"testing"
+	"time"
 )
 
 var versions = []mt.Version{

@@ -1,11 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"github.com/mattes/migrate"
 	_ "github.com/mattes/migrate/database/stub" // TODO remove again
 	_ "github.com/mattes/migrate/source/file"
 	"os"
-	"fmt"
 )
 
 func createCmd(dir string, timestamp int64, name string, ext string) {
@@ -16,9 +16,9 @@ func createCmd(dir string, timestamp int64, name string, ext string) {
 }
 
 func createFile(fname string) {
-  if _, err := os.Create(fname); err != nil {
-    log.fatalErr(err)
-  }
+	if _, err := os.Create(fname); err != nil {
+		log.fatalErr(err)
+	}
 }
 
 func gotoCmd(m *migrate.Migrate, v uint) {

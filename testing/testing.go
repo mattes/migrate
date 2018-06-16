@@ -49,8 +49,8 @@ func ParallelTest(t *testing.T, versions []Version, readyFn IsReadyFunc, testFn 
 
 				// wait until database is ready
 				tick := time.Tick(1000 * time.Millisecond)
-				timeout := time.After(time.Duration(delay + 60) * time.Second)
-				outer:
+				timeout := time.After(time.Duration(delay+60) * time.Second)
+			outer:
 				for {
 					select {
 					case <-tick:

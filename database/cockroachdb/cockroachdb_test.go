@@ -9,10 +9,10 @@ import (
 	"io"
 	"testing"
 
+	"bytes"
 	"github.com/lib/pq"
 	dt "github.com/mattes/migrate/database/testing"
 	mt "github.com/mattes/migrate/testing"
-	"bytes"
 )
 
 var versions = []mt.Version{
@@ -28,7 +28,7 @@ func isReady(i mt.Instance) bool {
 	err = db.Ping()
 	if err == io.EOF {
 		_, err = db.Exec("CREATE DATABASE migrate")
-		return err == nil;
+		return err == nil
 	} else if e, ok := err.(*pq.Error); ok {
 		if e.Code.Name() == "cannot_connect_now" {
 			return false
@@ -36,7 +36,7 @@ func isReady(i mt.Instance) bool {
 	}
 
 	_, err = db.Exec("CREATE DATABASE migrate")
-	return err == nil;
+	return err == nil
 
 	return true
 }
