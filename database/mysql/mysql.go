@@ -35,14 +35,23 @@ type Config struct {
 }
 
 type Mysql struct {
-	db       *sql.DB
+	db       MysqlMigrator
 	isLocked bool
 
 	config *Config
 }
 
+type MysqlMigrator interface {
+	Ping() error
+	Close() error
+	Begin() (*sql.Tx, error)
+	Query(query string, args ...interface{}) (*sql.Rows, error)
+	QueryRow(string, ...interface{}) *sql.Row
+	Exec(query string, args ...interface{}) (sql.Result, error)
+}
+
 // instance must have `multiStatements` set to true
-func WithInstance(instance *sql.DB, config *Config) (database.Driver, error) {
+func WithInstance(instance MysqlMigrator, config *Config) (database.Driver, error) {
 	if config == nil {
 		return nil, ErrNilConfig
 	}
