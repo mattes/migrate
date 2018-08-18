@@ -41,7 +41,11 @@ func ParallelTest(t *testing.T, versions []Version, readyFn IsReadyFunc, testFn 
 				// create new container
 				container, err := NewDockerContainer(t, version.Image, version.ENV, version.Cmd)
 				if err != nil {
-					t.Fatalf("%v\n%s", err, containerLogs(t, container))
+					if container == nil {
+						t.Fatal(err)
+					} else {
+						t.Fatalf("%v\n%s", err, containerLogs(t, container))
+					}
 				}
 
 				// make sure to remove container once done
