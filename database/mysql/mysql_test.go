@@ -11,6 +11,7 @@ import (
 	// "github.com/go-sql-driver/mysql"
 	dt "github.com/mattes/migrate/database/testing"
 	mt "github.com/mattes/migrate/testing"
+	"time"
 )
 
 var versions = []mt.Version{
@@ -42,6 +43,7 @@ func Test(t *testing.T) {
 		func(t *testing.T, i mt.Instance) {
 			p := &Mysql{}
 			addr := fmt.Sprintf("mysql://root:root@tcp(%v:%v)/public", i.Host(), i.Port())
+			time.Sleep(time.Second * 15) // it seems that sometimes MySQL server is not started yet and the test fails
 			d, err := p.Open(addr)
 			if err != nil {
 				t.Fatalf("%v", err)
